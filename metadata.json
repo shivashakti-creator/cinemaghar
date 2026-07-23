@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Gajuri Cinemas",
+  "description": "World-class luxury cinema ticket booking for Gajuri Cinemas, Gajuri, Dhading, Nepal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
