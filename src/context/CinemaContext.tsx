@@ -748,8 +748,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Admin Actions (Complete Movie CRUD + Removal Options)
   const addMovie = async (movieData: Omit<Movie, 'id'>): Promise<Movie> => {
-    const newId = `m-${Date.now()}`;
-    const newMovie: Movie = { ...movieData, id: newId, createdAt: new Date().toISOString() };
+    const newMovie: Movie = { ...movieData, createdAt: new Date().toISOString() };
     const res = await saveMovieToSupabase(newMovie);
     if (!res.success) {
       showToast(`Failed to save movie to database: ${res.error?.message || 'Unknown error'}`, 'error');

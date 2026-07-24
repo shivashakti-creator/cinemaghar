@@ -338,7 +338,6 @@ export async function deleteBookingFromSupabase(id: string) {
 export async function saveMovieToSupabase(movie: Movie) {
   try {
     const record = {
-      id: movie.id,
       title: movie.title,
       subtitle: movie.subtitle || '',
       nepali_title: movie.nepaliTitle || '',
