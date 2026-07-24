@@ -52,6 +52,7 @@ ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS end_date TEXT DEFAULT '';
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS rating NUMERIC(3,1) DEFAULT 9.0;
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS age_rating TEXT DEFAULT 'U/A';
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS censor_rating TEXT DEFAULT 'U/A (Nepal Censor Board)';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS languages JSONB DEFAULT '["Nepali"]'::jsonb;
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Nepal';
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS industry TEXT DEFAULT 'Nepali';
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS youtube_trailer_url TEXT DEFAULT '';
@@ -64,6 +65,7 @@ ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS cinematographer TEXT DEFAULT 
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS cast_members JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS hall_type TEXT DEFAULT 'Hall 1 - IMAX 3D Laser';
 ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT true;
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 -- 2. SHOWTIMES TABLE
 CREATE TABLE IF NOT EXISTS showtimes (

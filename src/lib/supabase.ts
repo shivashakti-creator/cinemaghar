@@ -21,6 +21,9 @@ function formatSupabaseUrl(url: string): string {
 const supabaseUrl = formatSupabaseUrl(rawUrl);
 const supabaseAnonKey = rawKey || 'sb_publishable_TlrVZJAlHME0QBQIcjuFtw_JjJCGaDZ';
 
+console.log('[Supabase Init]: Target URL =', supabaseUrl);
+console.log('[Supabase Init]: Anon Key exists =', Boolean(supabaseAnonKey), `(length: ${supabaseAnonKey.length})`);
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface SupabaseBookingRecord {
