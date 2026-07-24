@@ -69,8 +69,23 @@ const GENRE_OPTIONS = [
 ];
 
 export const AdminDashboard: React.FC = () => {
-  const { profile, signOut } = useAdminAuth();
-  const { showToast, setActiveTab: setMainActiveTab } = useCinema();
+  const {
+    profile,
+    signOut,
+    adminAccounts,
+    updateAdminCredentials,
+    createAdminAccount,
+    deleteAdminAccount
+  } = useAdminAuth();
+  const {
+    showToast,
+    setActiveTab: setMainActiveTab,
+    staffAccounts,
+    createStaffAccount,
+    updateStaffAccount,
+    deleteStaffAccount,
+    toggleStaffActive
+  } = useCinema();
 
   useEffect(() => {
     setMainActiveTab('admin');
@@ -346,86 +361,160 @@ export const AdminDashboard: React.FC = () => {
   });
 
   // ==========================================
-  // STAFF MANAGEMENT STATE
+  // STAFF & ADMIN MANAGEMENT STATE & HANDLERS
   // ==========================================
-  const [staffList, setStaffList] = useState<StaffRecord[]>([
-    {
-      id: 'staff-1',
-      staff_id: 'GAJ-S01',
-      full_name: 'Prakash Sharma',
-      email: 'prakash@gajuricinemas.com',
-      phone: '+977 9841234567',
-      role: 'staff',
-      is_active: true,
-      last_login: '2026-07-23 10:15 AM',
-      total_scans: 142,
-      device_used: 'Android Gate Scanner #1',
-      branch: 'Gajuri Main Hall'
-    },
-    {
-      id: 'staff-2',
-      staff_id: 'GAJ-S02',
-      full_name: 'Sita Adhikari',
-      email: 'sita@gajuricinemas.com',
-      phone: '+977 9851234568',
-      role: 'staff',
-      is_active: true,
-      last_login: '2026-07-23 09:30 AM',
-      total_scans: 98,
-      device_used: 'iOS Gate Scanner #2',
-      branch: 'Gajuri VIP Screen'
-    }
-  ]);
-
   const [showStaffModal, setShowStaffModal] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<any>(null);
+  const [sStaffId, setSStaffId] = useState('');
   const [sName, setSName] = useState('');
   const [sEmail, setSEmail] = useState('');
   const [sPhone, setSPhone] = useState('');
+  const [sBranch, setSBranch] = useState('Gajuri Main Branch');
+  const [sRole, setSRole] = useState<any>('Gate Scanner');
   const [sPassword, setSPassword] = useState('staff123');
 
-  const handleCreateStaff = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!sName.trim() || !sEmail.trim() || !sPhone.trim()) {
-      showToast('All staff fields are required', 'warning');
-      return;
+  // Quick Password Reset Modal for Staff
+  const [resetPassStaff, setResetPassStaff] = useState<any>(null);
+  const [staffNewPassInput, setStaffNewPassInput] = useState('');
+
+  // Admin Credentials Update State
+  const [admEmailInput, setAdmEmailInput] = useState(profile?.email || '');
+  const [admNameInput, setAdmNameInput] = useState(profile?.full_name || '');
+  const [admPassInput, setAdmPassInput] = useState('');
+
+  // Keep admin form inputs synchronized with profile
+  useEffect(() => {
+    if (profile) {
+      setAdmEmailInput(profile.email);
+      setAdmNameInput(profile.full_name);
     }
+  }, [profile]);
 
-    const newStaff: StaffRecord = {
-      id: `staff-${Date.now()}`,
-      staff_id: `GAJ-S0${staffList.length + 1}`,
-      full_name: sName,
-      email: sEmail,
-      phone: sPhone,
-      role: 'staff',
-      is_active: true,
-      last_login: 'Just Created',
-      total_scans: 0,
-      device_used: 'Mobile App',
-      created_at: new Date().toISOString()
-    };
+  // Create Admin User ID Modal State
+  const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+  const [newAdmId, setNewAdmId] = useState('');
+  const [newAdmName, setNewAdmName] = useState('');
+  const [newAdmEmail, setNewAdmEmail] = useState('');
+  const [newAdmPass, setNewAdmPass] = useState('admin123');
+  const [newAdmRole, setNewAdmRole] = useState<'admin' | 'super_admin'>('admin');
 
-    // Save to staff_members table
-    try {
-      await supabase.from('staff_members').insert([{
-        id: newStaff.id,
-        staff_id: newStaff.staff_id,
-        full_name: newStaff.full_name,
-        email: newStaff.email,
-        phone: newStaff.phone,
-        password_hash: sPassword,
-        role: 'staff',
-        is_active: true
-      }]);
-    } catch (err) {
-      console.warn('Staff member DB insert:', err);
-    }
-
-    setStaffList((prev) => [newStaff, ...prev]);
-    showToast(`Staff account created for ${sName}`, 'success');
-    setShowStaffModal(false);
+  // Handlers for Staff
+  const handleOpenAddStaff = () => {
+    setEditingStaff(null);
+    setSStaffId(`STF-${String(staffAccounts.length + 1).padStart(3, '0')}`);
     setSName('');
     setSEmail('');
     setSPhone('');
+    setSBranch('Gajuri Main Branch');
+    setSRole('Gate Scanner');
+    setSPassword('staff123');
+    setShowStaffModal(true);
+  };
+
+  const handleOpenEditStaff = (st: any) => {
+    setEditingStaff(st);
+    setSStaffId(st.staffId);
+    setSName(st.fullName);
+    setSEmail(st.email);
+    setSPhone(st.phone);
+    setSBranch(st.branch || 'Gajuri Main Branch');
+    setSRole(st.role || 'Gate Scanner');
+    setSPassword(st.password || 'staff123');
+    setShowStaffModal(true);
+  };
+
+  const handleSaveStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sName.trim() || !sEmail.trim() || !sPhone.trim()) {
+      showToast('Full Name, Email, and Phone are required', 'warning');
+      return;
+    }
+
+    if (editingStaff) {
+      await updateStaffAccount(editingStaff.id, {
+        staffId: sStaffId.trim() || editingStaff.staffId,
+        fullName: sName.trim(),
+        email: sEmail.trim(),
+        phone: sPhone.trim(),
+        branch: sBranch,
+        role: sRole,
+        password: sPassword.trim()
+      });
+      showToast(`Updated Staff Account: ${sName}`, 'success');
+    } else {
+      await createStaffAccount({
+        staffId: sStaffId.trim(),
+        fullName: sName.trim(),
+        email: sEmail.trim(),
+        phone: sPhone.trim(),
+        branch: sBranch,
+        assignedHall: 'All Screens',
+        role: sRole,
+        isActive: true,
+        password: sPassword.trim() || 'staff123'
+      });
+    }
+
+    setShowStaffModal(false);
+  };
+
+  const handleResetStaffPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetPassStaff || !staffNewPassInput.trim()) {
+      showToast('Please enter a new password', 'warning');
+      return;
+    }
+    await updateStaffAccount(resetPassStaff.id, {
+      password: staffNewPassInput.trim()
+    });
+    showToast(`Password changed for staff ${resetPassStaff.fullName} (${resetPassStaff.staffId})`, 'success');
+    setResetPassStaff(null);
+    setStaffNewPassInput('');
+  };
+
+  // Handlers for Admin
+  const handleUpdateAdminProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!admEmailInput.trim()) {
+      showToast('Admin email cannot be empty', 'warning');
+      return;
+    }
+    const res = await updateAdminCredentials({
+      email: admEmailInput.trim(),
+      fullName: admNameInput.trim(),
+      password: admPassInput.trim() || undefined
+    });
+    if (res.success) {
+      showToast('Admin credentials & email updated successfully!', 'success');
+      setAdmPassInput('');
+    } else {
+      showToast(res.error || 'Failed to update admin credentials', 'error');
+    }
+  };
+
+  const handleCreateAdminSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdmEmail.trim() || !newAdmName.trim() || !newAdmPass.trim()) {
+      showToast('Name, Email and Password are required', 'warning');
+      return;
+    }
+    const res = await createAdminAccount({
+      adminId: newAdmId.trim() || undefined,
+      email: newAdmEmail.trim(),
+      fullName: newAdmName.trim(),
+      password: newAdmPass.trim(),
+      role: newAdmRole
+    });
+    if (res.success) {
+      showToast(`Created new Admin User ID: ${res.admin?.adminId} (${newAdmEmail})`, 'success');
+      setShowCreateAdminModal(false);
+      setNewAdmId('');
+      setNewAdmName('');
+      setNewAdmEmail('');
+      setNewAdmPass('admin123');
+    } else {
+      showToast(res.error || 'Failed to create admin account', 'error');
+    }
   };
 
   // ==========================================
@@ -1213,13 +1302,13 @@ export const AdminDashboard: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h1 className="text-3xl font-extrabold font-serif text-white tracking-wide">Staff & Gate Operators</h1>
-                  <p className="text-xs text-slate-400">Provision scanner staff accounts, reset passwords, and monitor gate activity.</p>
+                  <p className="text-xs text-slate-400">Provision scanner staff accounts, edit credentials, change passwords, and monitor gate access.</p>
                 </div>
 
                 <button
                   id="open-add-staff-modal"
-                  onClick={() => setShowStaffModal(true)}
-                  className="px-5 py-2.5 rounded-2xl bg-[#D4AF37] hover:bg-amber-400 text-black font-extrabold text-xs flex items-center gap-2 shadow-[0_0_20px_rgba(212,175,55,0.4)] cursor-pointer"
+                  onClick={handleOpenAddStaff}
+                  className="px-5 py-2.5 rounded-2xl bg-[#D4AF37] hover:bg-amber-400 text-black font-extrabold text-xs flex items-center gap-2 shadow-[0_0_20px_rgba(212,175,55,0.4)] cursor-pointer transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   <span>PROVISION NEW STAFF</span>
@@ -1227,41 +1316,73 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {staffList.map((st) => (
+                {staffAccounts.map((st) => (
                   <div key={st.id} className="bg-[#0F1018] p-6 rounded-3xl border border-white/10 space-y-4 shadow-xl flex flex-col justify-between">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
-                          ACTIVE STAFF • {st.staff_id}
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          st.isActive ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        }`}>
+                          {st.isActive ? 'ACTIVE STAFF' : 'INACTIVE'} • {st.staffId}
                         </span>
-                        <span className="text-[10px] text-slate-400">Last Login: {st.last_login}</span>
+                        <span className="px-2.5 py-0.5 rounded-lg bg-white/5 text-slate-300 text-[10px] font-mono border border-white/10">
+                          {st.role || 'Gate Scanner'}
+                        </span>
                       </div>
 
                       <div>
-                        <h3 className="text-lg font-bold text-white font-serif">{st.full_name}</h3>
-                        <p className="text-xs text-slate-400">{st.email} • {st.phone}</p>
+                        <h3 className="text-lg font-bold text-white font-serif">{st.fullName}</h3>
+                        <p className="text-xs text-[#D4AF37] font-semibold">{st.email}</p>
+                        <p className="text-xs text-slate-400">{st.phone}</p>
                       </div>
 
                       <div className="bg-[#161722] p-3 rounded-2xl border border-white/5 text-xs grid grid-cols-2 gap-2">
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase font-bold block">Assigned Gate</span>
-                          <span className="text-white font-bold">{st.branch || 'Gajuri Main Screen'}</span>
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">Assigned Gate / Branch</span>
+                          <span className="text-white font-bold">{st.branch || 'Gajuri Main Branch'}</span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-500 uppercase font-bold block">Total Scans</span>
-                          <span className="text-[#D4AF37] font-extrabold">{st.total_scans} Tickets</span>
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">Password</span>
+                          <span className="text-emerald-400 font-mono font-bold">{st.password ? '••••••••' : 'Default (staff123)'}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-white/10 text-xs">
-                      <span className="text-slate-400 text-[10px]">Device: {st.device_used}</span>
-                      <button
-                        onClick={() => showToast(`Password reset link sent to ${st.email}`, 'info')}
-                        className="px-3 py-1.5 rounded-xl bg-amber-950/60 hover:bg-amber-900 border border-amber-500/40 text-amber-300 text-[11px] font-bold cursor-pointer"
-                      >
-                        Reset Password
-                      </button>
+                    <div className="flex flex-wrap items-center justify-between pt-3 border-t border-white/10 text-xs gap-2">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleOpenEditStaff(st)}
+                          className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all"
+                        >
+                          <Edit3 className="w-3 h-3 text-[#D4AF37]" />
+                          <span>Edit Info</span>
+                        </button>
+                        <button
+                          onClick={() => setResetPassStaff(st)}
+                          className="px-3 py-1.5 rounded-xl bg-amber-950/60 hover:bg-amber-900 border border-amber-500/40 text-amber-300 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all"
+                        >
+                          <KeyRound className="w-3 h-3 text-amber-400" />
+                          <span>Change Password</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => toggleStaffActive(st.id)}
+                          className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                            st.isActive ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20'
+                          }`}
+                        >
+                          {st.isActive ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button
+                          onClick={() => deleteStaffAccount(st.id)}
+                          className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 cursor-pointer transition-all"
+                          title="Delete Staff Account"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1317,15 +1438,129 @@ export const AdminDashboard: React.FC = () => {
           )}
 
           {/* ========================================================= */}
-          {/* TAB 8: SYSTEM SETTINGS */}
+          {/* TAB 8: SYSTEM SETTINGS & ADMIN SECURITY */}
           {/* ========================================================= */}
           {activeTab === 'settings' && (
-            <div className="space-y-6 animate-fade-in">
+            <div className="space-y-8 animate-fade-in">
               <div>
-                <h1 className="text-3xl font-extrabold font-serif text-white tracking-wide">System Settings</h1>
-                <p className="text-xs text-slate-400">Theater settings, ticket defaults, and Supabase connection metadata.</p>
+                <h1 className="text-3xl font-extrabold font-serif text-white tracking-wide">System Settings & Security</h1>
+                <p className="text-xs text-slate-400">Admin account credentials, email management, user IDs, and theater configuration.</p>
               </div>
 
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* ADMIN ACCOUNT & EMAIL / PASSWORD EDITING */}
+                <div className="bg-[#0F1018] p-6 sm:p-8 rounded-3xl border border-[#D4AF37]/40 space-y-6 shadow-2xl relative overflow-hidden">
+                  <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+                    <div className="p-3 rounded-2xl bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37]">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold font-serif text-white">My Admin Account & Password</h3>
+                      <p className="text-[11px] text-slate-400">Change your active admin login email, display name, and password.</p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleUpdateAdminProfileSubmit} className="space-y-4 text-xs">
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">Admin Full Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={admNameInput}
+                        onChange={(e) => setAdmNameInput(e.target.value)}
+                        className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">Admin Login Email *</label>
+                      <input
+                        type="email"
+                        required
+                        value={admEmailInput}
+                        onChange={(e) => setAdmEmailInput(e.target.value)}
+                        className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-[#D4AF37]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-300 font-bold mb-1">New Admin Password</label>
+                      <input
+                        type="password"
+                        value={admPassInput}
+                        onChange={(e) => setAdmPassInput(e.target.value)}
+                        placeholder="Leave blank to keep current password"
+                        className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white font-mono focus:outline-none focus:border-[#D4AF37]"
+                      />
+                      <p className="text-[10px] text-slate-500 mt-1">Updates both local admin session and database credentials.</p>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-3 rounded-2xl bg-[#D4AF37] hover:bg-amber-400 text-black font-extrabold text-xs tracking-wider transition-all shadow-[0_0_20px_rgba(212,175,55,0.3)] cursor-pointer"
+                    >
+                      UPDATE ADMIN CREDENTIALS
+                    </button>
+                  </form>
+                </div>
+
+                {/* ADMIN USER IDS & ACCOUNTS MANAGEMENT */}
+                <div className="bg-[#0F1018] p-6 sm:p-8 rounded-3xl border border-white/10 space-y-6 shadow-2xl">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300">
+                        <ShieldCheck className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold font-serif text-white">Admin User Accounts & IDs</h3>
+                        <p className="text-[11px] text-slate-400">Manage all registered Admin User IDs in system.</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setNewAdmId(`ADM-${String(adminAccounts.length + 1).padStart(3, '0')}`);
+                        setNewAdmName('');
+                        setNewAdmEmail('');
+                        setNewAdmPass('admin123');
+                        setShowCreateAdminModal(true);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-[11px] flex items-center gap-1.5 cursor-pointer border border-white/10 transition-all"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-[#D4AF37]" />
+                      <span>Create Admin ID</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {adminAccounts.map((acc) => (
+                      <div key={acc.id} className="bg-[#161722] p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] font-bold font-mono">
+                              {acc.adminId}
+                            </span>
+                            <span className="text-xs font-bold text-white">{acc.fullName}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5">{acc.email} • <span className="uppercase text-[10px] text-amber-300">{acc.role}</span></p>
+                        </div>
+
+                        {adminAccounts.length > 1 && (
+                          <button
+                            onClick={() => deleteAdminAccount(acc.id)}
+                            className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 cursor-pointer"
+                            title="Remove Admin Account"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* MULTIPLEX CONFIGURATION */}
               <div className="bg-[#0F1018] p-6 rounded-3xl border border-white/10 space-y-6 shadow-2xl max-w-2xl">
                 <div className="space-y-4">
                   <h3 className="text-lg font-bold font-serif text-white border-b border-white/10 pb-2">Gajuri Multiplex Configuration</h3>
@@ -1639,24 +1874,43 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* ========================================================= */}
-      {/* MODAL: STAFF PROVISIONING */}
+      {/* MODAL: STAFF PROVISIONING & EDITING */}
       {/* ========================================================= */}
       {showStaffModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#0F1018] border border-[#D4AF37]/50 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <h2 className="text-2xl font-black font-serif text-white">Provision Gate Staff Account</h2>
+              <div>
+                <h2 className="text-2xl font-black font-serif text-white">{editingStaff ? 'Edit Staff Account' : 'Provision Staff Account'}</h2>
+                <p className="text-[11px] text-slate-400">Update staff login email, ID, and passkeys.</p>
+              </div>
               <button onClick={() => setShowStaffModal(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
             </div>
 
-            <form onSubmit={handleCreateStaff} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveStaff} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Staff ID *</label>
+                  <input type="text" required value={sStaffId} onChange={(e) => setSStaffId(e.target.value)} placeholder="STF-001" className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white font-mono" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Role</label>
+                  <select value={sRole} onChange={(e) => setSRole(e.target.value)} className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white">
+                    <option value="Gate Scanner">Gate Scanner</option>
+                    <option value="Counter Staff">Counter Staff</option>
+                    <option value="Cinema Manager">Cinema Manager</option>
+                    <option value="Hall Supervisor">Hall Supervisor</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-slate-300 font-bold mb-1">Full Name *</label>
                 <input type="text" required value={sName} onChange={(e) => setSName(e.target.value)} placeholder="e.g. Ramesh Adhikari" className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white" />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Email Address *</label>
+                <label className="block text-slate-300 font-bold mb-1">Email Address (Login ID) *</label>
                 <input type="email" required value={sEmail} onChange={(e) => setSEmail(e.target.value)} placeholder="ramesh@gajuricinemas.com" className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white" />
               </div>
 
@@ -1666,13 +1920,146 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Initial Staff Password</label>
-                <input type="text" value={sPassword} onChange={(e) => setSPassword(e.target.value)} className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white font-mono" />
+                <label className="block text-slate-300 font-bold mb-1">Assigned Gate / Branch</label>
+                <input type="text" value={sBranch} onChange={(e) => setSBranch(e.target.value)} placeholder="Gajuri Main Branch" className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white" />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Staff Password</label>
+                <input type="text" value={sPassword} onChange={(e) => setSPassword(e.target.value)} placeholder="staff123" className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white font-mono" />
+                <p className="text-[10px] text-slate-500 mt-0.5">Staff will use this password alongside their Email or Staff ID to log in.</p>
               </div>
 
               <div className="pt-4 flex justify-end gap-3 border-t border-white/10">
-                <button type="button" onClick={() => setShowStaffModal(false)} className="px-5 py-2.5 rounded-2xl bg-white/5 text-slate-300 font-bold">Cancel</button>
-                <button type="submit" className="px-6 py-2.5 rounded-2xl bg-[#D4AF37] hover:bg-amber-400 text-black font-extrabold shadow">Create Staff</button>
+                <button type="button" onClick={() => setShowStaffModal(false)} className="px-5 py-2.5 rounded-2xl bg-white/5 text-slate-300 font-bold cursor-pointer">Cancel</button>
+                <button type="submit" className="px-6 py-2.5 rounded-2xl bg-[#D4AF37] hover:bg-amber-400 text-black font-extrabold shadow cursor-pointer">
+                  {editingStaff ? 'Update Staff Account' : 'Create Staff Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: QUICK STAFF PASSWORD CHANGE */}
+      {/* ========================================================= */}
+      {resetPassStaff && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0F1018] border border-amber-500/50 rounded-3xl p-6 max-w-md w-full space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <h2 className="text-xl font-bold font-serif text-white">Change Password for Staff</h2>
+                <p className="text-xs text-amber-300 font-bold">{resetPassStaff.fullName} ({resetPassStaff.staffId})</p>
+              </div>
+              <button onClick={() => setResetPassStaff(null)} className="text-slate-400 hover:text-white font-bold">✕</button>
+            </div>
+
+            <form onSubmit={handleResetStaffPasswordSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">New Password *</label>
+                <input
+                  type="text"
+                  required
+                  value={staffNewPassInput}
+                  onChange={(e) => setStaffNewPassInput(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white font-mono focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="pt-3 flex justify-end gap-3 border-t border-white/10">
+                <button type="button" onClick={() => setResetPassStaff(null)} className="px-5 py-2.5 rounded-2xl bg-white/5 text-slate-300 font-bold cursor-pointer">Cancel</button>
+                <button type="submit" className="px-6 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-500 text-black font-extrabold shadow cursor-pointer">
+                  Save New Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: CREATE NEW ADMIN USER ID */}
+      {/* ========================================================= */}
+      {showCreateAdminModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0F1018] border border-[#D4AF37]/60 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <h2 className="text-xl font-extrabold font-serif text-white">Provision New Admin User ID</h2>
+                <p className="text-[11px] text-slate-400">Create additional administrator credentials.</p>
+              </div>
+              <button onClick={() => setShowCreateAdminModal(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
+            </div>
+
+            <form onSubmit={handleCreateAdminSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Admin User ID *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newAdmId}
+                    onChange={(e) => setNewAdmId(e.target.value)}
+                    placeholder="ADM-002"
+                    className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Admin Role</label>
+                  <select
+                    value={newAdmRole}
+                    onChange={(e) => setNewAdmRole(e.target.value as any)}
+                    className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="super_admin">Super Admin</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Admin Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newAdmName}
+                  onChange={(e) => setNewAdmName(e.target.value)}
+                  placeholder="e.g. Cinema Executive"
+                  className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Admin Email (Login ID) *</label>
+                <input
+                  type="email"
+                  required
+                  value={newAdmEmail}
+                  onChange={(e) => setNewAdmEmail(e.target.value)}
+                  placeholder="admin2@gajuricinemas.com"
+                  className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Admin Password *</label>
+                <input
+                  type="text"
+                  required
+                  value={newAdmPass}
+                  onChange={(e) => setNewAdmPass(e.target.value)}
+                  placeholder="admin123"
+                  className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white font-mono"
+                />
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3 border-t border-white/10">
+                <button type="button" onClick={() => setShowCreateAdminModal(false)} className="px-5 py-2.5 rounded-2xl bg-white/5 text-slate-300 font-bold cursor-pointer">Cancel</button>
+                <button type="submit" className="px-6 py-2.5 rounded-2xl bg-[#D4AF37] hover:bg-amber-400 text-black font-extrabold shadow cursor-pointer">
+                  Create Admin Account
+                </button>
               </div>
             </form>
           </div>

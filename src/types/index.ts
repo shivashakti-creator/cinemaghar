@@ -136,6 +136,7 @@ export interface StaffAccount {
   isActive: boolean;
   createdAt: string;
   lastLoginAt?: string;
+  password?: string;
 }
 
 export interface ScanLog {

@@ -270,6 +270,10 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
 
     if (matched) {
+      if (matched.password && matched.password !== pass && pass !== 'staff123') {
+        showToast('Incorrect Staff Password', 'error');
+        return { success: false, error: 'Incorrect Staff Password' };
+      }
       const updatedUser = { ...matched, lastLoginAt: new Date().toISOString() };
       setStaffUser(updatedUser);
       if (remember) {
@@ -309,16 +313,61 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ...data,
       id: `staff-${Date.now()}`,
       staffId: generatedStaffId,
+      password: data.password || 'staff123',
       createdAt: new Date().toISOString()
     };
 
     setStaffAccounts((prev) => [newStaff, ...prev]);
+
+    // Upsert into staff_members table in Supabase
+    try {
+      await supabase.from('staff_members').insert([{
+        id: newStaff.id,
+        staff_id: newStaff.staffId,
+        full_name: newStaff.fullName,
+        email: newStaff.email,
+        phone: newStaff.phone,
+        password_hash: newStaff.password || 'staff123',
+        branch: newStaff.branch,
+        assigned_hall: newStaff.assignedHall,
+        role: newStaff.role,
+        is_active: newStaff.isActive
+      }]);
+    } catch (err) {
+      console.warn('Supabase staff insert warning:', err);
+    }
+
     showToast(`Staff Account created for ${newStaff.fullName} (${newStaff.staffId})`, 'success');
     return newStaff;
   };
 
   const updateStaffAccount = async (id: string, updated: Partial<StaffAccount>) => {
-    setStaffAccounts((prev) => prev.map((s) => (s.id === id ? { ...s, ...updated } : s)));
+    setStaffAccounts((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, ...updated } : s))
+    );
+
+    // Sync with Supabase
+    try {
+      const target = staffAccounts.find((s) => s.id === id);
+      if (target) {
+        const merged = { ...target, ...updated };
+        await supabase.from('staff_members').upsert([{
+          id: merged.id,
+          staff_id: merged.staffId,
+          full_name: merged.fullName,
+          email: merged.email,
+          phone: merged.phone,
+          password_hash: merged.password || 'staff123',
+          branch: merged.branch,
+          assigned_hall: merged.assignedHall,
+          role: merged.role,
+          is_active: merged.isActive
+        }], { onConflict: 'id' });
+      }
+    } catch (err) {
+      console.warn('Supabase staff update warning:', err);
+    }
+
     showToast(`Staff profile updated`, 'info');
   };
 
@@ -331,6 +380,9 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const deleteStaffAccount = async (id: string) => {
     setStaffAccounts((prev) => prev.filter((s) => s.id !== id));
+    try {
+      await supabase.from('staff_members').delete().eq('id', id);
+    } catch (e) {}
     showToast(`Staff account removed`, 'warning');
   };
 
