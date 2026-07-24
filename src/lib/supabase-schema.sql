@@ -8,16 +8,17 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS movies (
   id VARCHAR(100) PRIMARY KEY,
   title TEXT NOT NULL,
-  subtitle TEXT,
-  nepali_title TEXT,
+  subtitle TEXT DEFAULT '',
+  nepali_title TEXT DEFAULT '',
   poster TEXT NOT NULL,
   backdrop TEXT NOT NULL,
-  vertical_poster TEXT,
-  trailer_thumbnail TEXT,
+  vertical_poster TEXT DEFAULT '',
+  trailer_thumbnail TEXT DEFAULT '',
   synopsis TEXT NOT NULL,
   duration VARCHAR(50) NOT NULL,
+  duration_minutes INTEGER DEFAULT 120,
   release_date VARCHAR(50) NOT NULL,
-  end_date VARCHAR(50),
+  end_date VARCHAR(50) DEFAULT '',
   genre JSONB DEFAULT '[]'::jsonb,
   rating NUMERIC DEFAULT 9.0,
   age_rating VARCHAR(20) DEFAULT 'U/A',
@@ -26,13 +27,13 @@ CREATE TABLE IF NOT EXISTS movies (
   country TEXT DEFAULT 'Nepal',
   industry VARCHAR(50) DEFAULT 'Nepali',
   status VARCHAR(50) DEFAULT 'NOW_SHOWING',
-  youtube_trailer_url TEXT,
-  teaser_url TEXT,
-  director TEXT,
-  producer TEXT,
-  main_cast_text TEXT,
-  music_director TEXT,
-  cinematographer TEXT,
+  youtube_trailer_url TEXT DEFAULT '',
+  teaser_url TEXT DEFAULT '',
+  director TEXT DEFAULT '',
+  producer TEXT DEFAULT '',
+  main_cast_text TEXT DEFAULT '',
+  music_director TEXT DEFAULT '',
+  cinematographer TEXT DEFAULT '',
   cast_members JSONB DEFAULT '[]'::jsonb,
   hall_type TEXT DEFAULT 'Hall 1 - IMAX 3D Laser',
   featured BOOLEAN DEFAULT false,
@@ -83,12 +84,24 @@ CREATE TABLE IF NOT EXISTS showtimes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.showtimes ADD COLUMN IF NOT EXISTS hall_id VARCHAR(50) DEFAULT 'hall-1';
+ALTER TABLE public.showtimes ADD COLUMN IF NOT EXISTS hall_name TEXT DEFAULT 'Hall 1 - IMAX 3D Laser';
+ALTER TABLE public.showtimes ADD COLUMN IF NOT EXISTS screen_name TEXT DEFAULT 'Screen 1';
+ALTER TABLE public.showtimes ADD COLUMN IF NOT EXISTS end_time VARCHAR(20);
+ALTER TABLE public.showtimes ADD COLUMN IF NOT EXISTS intermission_time VARCHAR(20) DEFAULT '15 mins';
+ALTER TABLE public.showtimes ADD COLUMN IF NOT EXISTS format VARCHAR(50) DEFAULT 'IMAX 3D';
+ALTER TABLE public.showtimes ADD COLUMN IF NOT EXISTS prices JSONB DEFAULT '{"regular": 350, "executive": 500, "vip": 800}'::jsonb;
+ALTER TABLE public.showtimes ADD COLUMN IF NOT EXISTS seat_capacity INT DEFAULT 120;
+ALTER TABLE public.showtimes ADD COLUMN IF NOT EXISTS booked_seat_ids JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.showtimes ADD COLUMN IF NOT EXISTS blocked_seat_ids JSONB DEFAULT '[]'::jsonb;
+
 -- 3. BOOKINGS TABLE
 CREATE TABLE IF NOT EXISTS bookings (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id VARCHAR(100) PRIMARY KEY,
   booking_code VARCHAR(100) UNIQUE NOT NULL,
   movie_id VARCHAR(100),
   movie_title TEXT NOT NULL,
+  movie_poster TEXT,
   customer_name TEXT NOT NULL,
   customer_phone TEXT NOT NULL,
   customer_email TEXT,
@@ -103,8 +116,20 @@ CREATE TABLE IF NOT EXISTS bookings (
   total_price NUMERIC NOT NULL,
   payment_method VARCHAR(50) NOT NULL,
   payment_status VARCHAR(50) DEFAULT 'CONFIRMED',
+  qr_token TEXT,
+  scanned_by VARCHAR(100),
+  scanned_by_name TEXT,
+  scanned_at TIMESTAMPTZ,
+  manual_checkin_reason TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS movie_poster TEXT DEFAULT '';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS qr_token TEXT DEFAULT '';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS scanned_by VARCHAR(100) DEFAULT '';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS scanned_by_name TEXT DEFAULT '';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS scanned_at TIMESTAMPTZ;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS manual_checkin_reason TEXT DEFAULT '';
 
 -- 4. HALLS TABLE
 CREATE TABLE IF NOT EXISTS halls (
@@ -116,13 +141,20 @@ CREATE TABLE IF NOT EXISTS halls (
 
 -- 5. ADMINS TABLE
 CREATE TABLE IF NOT EXISTS admins (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id VARCHAR(100) PRIMARY KEY,
+  admin_id VARCHAR(50),
   email TEXT UNIQUE NOT NULL,
+  full_name TEXT,
+  password_hash TEXT DEFAULT 'admin123',
   role VARCHAR(50) DEFAULT 'admin',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. STAFF MEMBERS TABLE
+ALTER TABLE public.admins ADD COLUMN IF NOT EXISTS admin_id VARCHAR(50);
+ALTER TABLE public.admins ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE public.admins ADD COLUMN IF NOT EXISTS password_hash TEXT DEFAULT 'admin123';
+
+-- 6. STAFF MEMBERS TABLE
 CREATE TABLE IF NOT EXISTS staff_members (
   id VARCHAR(100) PRIMARY KEY,
   staff_id VARCHAR(50) UNIQUE NOT NULL,
@@ -137,9 +169,15 @@ CREATE TABLE IF NOT EXISTS staff_members (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. SCAN LOGS TABLE
+ALTER TABLE public.staff_members ADD COLUMN IF NOT EXISTS password_hash TEXT DEFAULT 'staff123';
+ALTER TABLE public.staff_members ADD COLUMN IF NOT EXISTS branch TEXT DEFAULT 'Gajuri Main Branch';
+ALTER TABLE public.staff_members ADD COLUMN IF NOT EXISTS assigned_hall TEXT DEFAULT 'All Screens';
+ALTER TABLE public.staff_members ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'staff';
+ALTER TABLE public.staff_members ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+-- 7. SCAN LOGS TABLE
 CREATE TABLE IF NOT EXISTS scan_logs (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id VARCHAR(100) PRIMARY KEY,
   booking_id VARCHAR(100) NOT NULL,
   staff_id VARCHAR(50) NOT NULL,
   staff_name TEXT NOT NULL,
@@ -157,28 +195,14 @@ ALTER TABLE showtimes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scan_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 
 -- Allow public full access for movies (SELECT, INSERT, UPDATE, DELETE)
-CREATE POLICY "Public full access movies" ON movies
-  FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public full access movies" ON movies FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public full access showtimes" ON showtimes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public full access bookings" ON bookings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public full access staff_members" ON staff_members FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public full access scan_logs" ON scan_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public full access admins" ON admins FOR ALL USING (true) WITH CHECK (true);
 
-CREATE POLICY "Public read showtimes" ON showtimes
-  FOR SELECT USING (true);
-
-CREATE POLICY "Admin full access showtimes" ON showtimes
-  FOR ALL USING (true);
-
-CREATE POLICY "Public create bookings" ON bookings
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Public read bookings" ON bookings
-  FOR SELECT USING (true);
-
--- Staff Members RLS: Only admins manage staff, staff can view self
-CREATE POLICY "Staff members full access" ON staff_members
-  FOR ALL USING (true);
-
--- Scan Logs RLS: Staff and Admin can read & write scan logs
-CREATE POLICY "Scan logs full access" ON scan_logs
-  FOR ALL USING (true);
 

@@ -26,6 +26,12 @@ import {
   fetchMoviesFromSupabase,
   saveMovieToSupabase,
   deleteMovieFromSupabase,
+  fetchShowtimesFromSupabase,
+  saveShowtimeToSupabase,
+  deleteShowtimeFromSupabase,
+  fetchBookingsFromSupabase,
+  deleteBookingFromSupabase,
+  updateBookingStatusInSupabase,
   supabase
 } from '../lib/supabase';
 
@@ -253,11 +259,21 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Fetch initial movies from Supabase on mount if available
+  // Fetch initial movies, showtimes, and bookings from Supabase on mount
   useEffect(() => {
     fetchMoviesFromSupabase().then((data) => {
-      if (data && data.length > 0) {
+      if (data !== null) {
         setMovies(data);
+      }
+    });
+    fetchShowtimesFromSupabase().then((data) => {
+      if (data !== null && data.length > 0) {
+        setShowtimes(data);
+      }
+    });
+    fetchBookingsFromSupabase().then((data) => {
+      if (data !== null && data.length > 0) {
+        setBookings(data);
       }
     });
   }, []);
@@ -619,8 +635,11 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setConfirmedBooking(null);
   };
 
-  const deleteTicket = (bookingId: string) => {
-    setBookings((prev) => prev.filter((b) => b.id !== bookingId));
+  const deleteTicket = async (bookingId: string) => {
+    await deleteBookingFromSupabase(bookingId);
+    const fresh = await fetchBookingsFromSupabase();
+    if (fresh !== null) setBookings(fresh);
+    else setBookings((prev) => prev.filter((b) => b.id !== bookingId));
     showToast(`E-Ticket ${bookingId} removed successfully`, 'info');
   };
 
@@ -677,10 +696,12 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       status: 'CONFIRMED'
     };
 
-    saveBookingToSupabase({
+    await saveBookingToSupabase({
+      id: bookingId,
       booking_code: bookingId,
       movie_id: bookingMovie.id,
       movie_title: bookingMovie.title,
+      movie_poster: bookingMovie.poster,
       customer_name: customerDetails.name,
       customer_phone: customerDetails.phone,
       customer_email: customerDetails.email,
@@ -694,22 +715,22 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       snack_total: snackTotal,
       total_price: grandTotal,
       payment_method: method,
-      payment_status: 'CONFIRMED'
+      payment_status: 'CONFIRMED',
+      qr_token: `GAJURI-TICKET-${bookingId}-${selectedSeats.join('-')}`
     });
 
-    setShowtimes((prev) =>
-      prev.map((s) => {
-        if (s.id === bookingShowtime.id) {
-          return {
-            ...s,
-            bookedSeatIds: [...s.bookedSeatIds, ...selectedSeats]
-          };
-        }
-        return s;
-      })
-    );
+    const updatedShowtime: Showtime = {
+      ...bookingShowtime,
+      bookedSeatIds: [...bookingShowtime.bookedSeatIds, ...selectedSeats]
+    };
+    await saveShowtimeToSupabase(updatedShowtime);
 
-    setBookings((prev) => [newBooking, ...prev]);
+    const freshBookings = await fetchBookingsFromSupabase();
+    if (freshBookings !== null) setBookings(freshBookings);
+    else setBookings((prev) => [newBooking, ...prev]);
+
+    const freshShowtimes = await fetchShowtimesFromSupabase();
+    if (freshShowtimes !== null) setShowtimes(freshShowtimes);
 
     const earnedPoints = Math.floor(grandTotal / 100) * 10;
     setUser((prev) => ({
@@ -793,7 +814,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Showtime Operations
-  const addShowtime = (showtimeData: Omit<Showtime, 'id' | 'bookedSeatIds' | 'blockedSeatIds'>) => {
+  const addShowtime = async (showtimeData: Omit<Showtime, 'id' | 'bookedSeatIds' | 'blockedSeatIds'>) => {
     const newId = `s-${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
     const newShowtime: Showtime = {
       ...showtimeData,
@@ -801,7 +822,10 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       bookedSeatIds: [],
       blockedSeatIds: []
     };
-    setShowtimes((prev) => [...prev, newShowtime]);
+    await saveShowtimeToSupabase(newShowtime);
+    const fresh = await fetchShowtimesFromSupabase();
+    if (fresh !== null) setShowtimes(fresh);
+    else setShowtimes((prev) => [...prev, newShowtime]);
     showToast(`Showtime added for ${newShowtime.time} (${newShowtime.date})`, 'success');
   };
 
@@ -855,8 +879,11 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     showToast(`Bulk created ${totalAdded} showtimes for the next ${daysCount} days`, 'success');
   };
 
-  const deleteShowtime = (id: string) => {
-    setShowtimes((prev) => prev.filter((s) => s.id !== id));
+  const deleteShowtime = async (id: string) => {
+    await deleteShowtimeFromSupabase(id);
+    const fresh = await fetchShowtimesFromSupabase();
+    if (fresh !== null) setShowtimes(fresh);
+    else setShowtimes((prev) => prev.filter((s) => s.id !== id));
     showToast(`Showtime deleted`, 'warning');
   };
 

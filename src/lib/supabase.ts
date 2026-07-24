@@ -29,6 +29,7 @@ export interface SupabaseBookingRecord {
   booking_code: string;
   movie_id: string;
   movie_title: string;
+  movie_poster?: string;
   customer_name: string;
   customer_phone: string;
   customer_email?: string;
@@ -43,37 +44,46 @@ export interface SupabaseBookingRecord {
   total_price: number;
   payment_method: string;
   payment_status?: string;
+  qr_token?: string;
+  scanned_by?: string;
+  scanned_by_name?: string;
+  scanned_at?: string;
+  manual_checkin_reason?: string;
 }
 
 export async function saveBookingToSupabase(booking: SupabaseBookingRecord) {
   try {
+    const record = {
+      id: booking.id || booking.booking_code,
+      booking_code: booking.booking_code,
+      movie_id: booking.movie_id,
+      movie_title: booking.movie_title,
+      movie_poster: booking.movie_poster || '',
+      customer_name: booking.customer_name,
+      customer_phone: booking.customer_phone,
+      customer_email: booking.customer_email || '',
+      show_date: booking.show_date || '',
+      show_time: booking.show_time,
+      hall_name: booking.hall_name,
+      format: booking.format || '2D',
+      selected_seats: booking.selected_seats,
+      food_items: booking.food_items || [],
+      ticket_total: booking.ticket_total || 0,
+      snack_total: booking.snack_total || 0,
+      total_price: booking.total_price,
+      payment_method: booking.payment_method,
+      payment_status: booking.payment_status || 'CONFIRMED',
+      qr_token: booking.qr_token || booking.booking_code
+    };
+
+    console.log('[Supabase saveBookingToSupabase Request]:', record);
     const { data, error } = await supabase
       .from('bookings')
-      .insert([
-        {
-          booking_code: booking.booking_code,
-          movie_id: booking.movie_id,
-          movie_title: booking.movie_title,
-          customer_name: booking.customer_name,
-          customer_phone: booking.customer_phone,
-          customer_email: booking.customer_email || '',
-          show_date: booking.show_date || '',
-          show_time: booking.show_time,
-          hall_name: booking.hall_name,
-          format: booking.format || '2D',
-          selected_seats: booking.selected_seats,
-          food_items: booking.food_items || [],
-          ticket_total: booking.ticket_total || 0,
-          snack_total: booking.snack_total || 0,
-          total_price: booking.total_price,
-          payment_method: booking.payment_method,
-          payment_status: booking.payment_status || 'CONFIRMED'
-        }
-      ])
+      .upsert([record])
       .select();
 
     if (error) {
-      console.warn('Supabase insert warning:', error);
+      console.warn('Supabase booking upsert warning:', error);
       return { success: false, error };
     }
 
@@ -81,6 +91,30 @@ export async function saveBookingToSupabase(booking: SupabaseBookingRecord) {
     return { success: true, data };
   } catch (err) {
     console.error('Failed to save booking to Supabase:', err);
+    return { success: false, error: err };
+  }
+}
+
+export async function updateBookingStatusInSupabase(
+  bookingId: string,
+  paymentStatus: string,
+  extraUpdates?: { scannedBy?: string; scannedByName?: string; scannedAt?: string; manualCheckinReason?: string }
+) {
+  try {
+    const updatePayload: Record<string, any> = { payment_status: paymentStatus };
+    if (extraUpdates?.scannedBy) updatePayload.scanned_by = extraUpdates.scannedBy;
+    if (extraUpdates?.scannedByName) updatePayload.scanned_by_name = extraUpdates.scannedByName;
+    if (extraUpdates?.scannedAt) updatePayload.scanned_at = extraUpdates.scannedAt;
+    if (extraUpdates?.manualCheckinReason) updatePayload.manual_checkin_reason = extraUpdates.manualCheckinReason;
+
+    const { data, error } = await supabase
+      .from('bookings')
+      .update(updatePayload)
+      .or(`id.eq.${bookingId},booking_code.eq.${bookingId}`)
+      .select();
+
+    return { success: !error, data, error };
+  } catch (err) {
     return { success: false, error: err };
   }
 }
@@ -119,10 +153,10 @@ export async function fetchMoviesFromSupabase(): Promise<Movie[] | null> {
     
     console.log('[Supabase fetchMoviesFromSupabase Response]:', { count: data?.length, error });
     if (error) {
-      console.warn('[Supabase fetchMoviesFromSupabase Notice]: Supabase database unreachable or returning error:', error.message || error);
+      console.warn('[Supabase fetchMoviesFromSupabase Notice]: Supabase database error:', error.message || error);
       return null;
     }
-    if (!data || data.length === 0) return null;
+    if (!data) return [];
 
     return data.map((item: any) => ({
       id: item.id,
@@ -163,6 +197,142 @@ export async function fetchMoviesFromSupabase(): Promise<Movie[] | null> {
     return null;
   }
 }
+
+// Fetch Showtimes from Supabase
+export async function fetchShowtimesFromSupabase(): Promise<Showtime[] | null> {
+  try {
+    console.log('[Supabase fetchShowtimesFromSupabase]: Querying public.showtimes table...');
+    const { data, error } = await supabase.from('showtimes').select('*').order('date', { ascending: true });
+
+    if (error) {
+      console.warn('[Supabase fetchShowtimesFromSupabase Error]:', error.message);
+      return null;
+    }
+    if (!data) return [];
+
+    return data.map((item: any) => ({
+      id: item.id,
+      movieId: item.movie_id,
+      hallId: item.hall_id || 'hall-1',
+      hallName: item.hall_name || 'Hall 1 - IMAX 3D Laser',
+      screenName: item.screen_name || 'Screen 1',
+      date: item.date || '',
+      time: item.time || '',
+      endTime: item.end_time || '',
+      intermissionTime: item.intermission_time || '15 mins',
+      format: item.format || 'IMAX 3D',
+      prices: typeof item.prices === 'string' ? JSON.parse(item.prices) : (item.prices || { regular: 350, executive: 500, vip: 800 }),
+      seatCapacity: item.seat_capacity || 120,
+      bookedSeatIds: typeof item.booked_seat_ids === 'string' ? JSON.parse(item.booked_seat_ids) : item.booked_seat_ids || [],
+      blockedSeatIds: typeof item.blocked_seat_ids === 'string' ? JSON.parse(item.blocked_seat_ids) : item.blocked_seat_ids || []
+    }));
+  } catch (err) {
+    console.error('[Supabase fetchShowtimesFromSupabase Exception]:', err);
+    return null;
+  }
+}
+
+// Save Showtime to Supabase
+export async function saveShowtimeToSupabase(showtime: Showtime) {
+  try {
+    const record = {
+      id: showtime.id,
+      movie_id: showtime.movieId,
+      hall_id: showtime.hallId || 'hall-1',
+      hall_name: showtime.hallName || 'Hall 1 - IMAX 3D Laser',
+      screen_name: showtime.screenName || 'Screen 1',
+      date: showtime.date,
+      time: showtime.time,
+      end_time: showtime.endTime || '',
+      intermission_time: showtime.intermissionTime || '15 mins',
+      format: showtime.format || 'IMAX 3D',
+      prices: showtime.prices,
+      seat_capacity: showtime.seatCapacity || 120,
+      booked_seat_ids: showtime.bookedSeatIds || [],
+      blocked_seat_ids: showtime.blockedSeatIds || []
+    };
+
+    console.log('[Supabase saveShowtimeToSupabase Request]:', record);
+    const { data, error } = await supabase.from('showtimes').upsert([record]).select();
+
+    if (error) {
+      console.error('[Supabase saveShowtimeToSupabase Error]:', error);
+    }
+    return { success: !error, data, error };
+  } catch (err) {
+    console.error('[Supabase saveShowtimeToSupabase Exception]:', err);
+    return { success: false, error: err };
+  }
+}
+
+// Delete Showtime from Supabase
+export async function deleteShowtimeFromSupabase(id: string) {
+  try {
+    const { error } = await supabase.from('showtimes').delete().eq('id', id);
+    return { success: !error, error };
+  } catch (err) {
+    return { success: false, error: err };
+  }
+}
+
+// Fetch Bookings from Supabase
+export async function fetchBookingsFromSupabase(): Promise<any[] | null> {
+  try {
+    console.log('[Supabase fetchBookingsFromSupabase]: Querying public.bookings table...');
+    const { data, error } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('[Supabase fetchBookingsFromSupabase Error]:', error.message);
+      return null;
+    }
+    if (!data) return [];
+
+    return data.map((item: any) => ({
+      id: item.id || item.booking_code,
+      movieId: item.movie_id,
+      movieTitle: item.movie_title,
+      moviePoster: item.movie_poster || '',
+      showtimeId: item.movie_id,
+      hallName: item.hall_name || 'Hall 1 - IMAX 3D',
+      date: item.show_date || '',
+      time: item.show_time || '',
+      format: item.format || '2D',
+      seatIds: typeof item.selected_seats === 'string' ? JSON.parse(item.selected_seats) : item.selected_seats || [],
+      seatsDescription: Array.isArray(item.selected_seats) ? item.selected_seats.join(', ') : '',
+      snacks: typeof item.food_items === 'string' ? JSON.parse(item.food_items) : item.food_items || [],
+      ticketTotal: Number(item.ticket_total || 0),
+      snackTotal: Number(item.snack_total || 0),
+      taxAmount: Math.round(Number(item.total_price || 0) * 0.13),
+      grandTotal: Number(item.total_price || 0),
+      paymentMethod: item.payment_method || 'eSewa',
+      paymentTransactionId: `${(item.payment_method || 'eSewa').toUpperCase()}-${Math.floor(1000000 + Math.random() * 9000000)}`,
+      customerName: item.customer_name || 'Guest',
+      customerEmail: item.customer_email || '',
+      customerPhone: item.customer_phone || '',
+      qrCodeData: item.qr_token || item.booking_code || item.id,
+      createdAt: item.created_at || new Date().toISOString(),
+      status: item.payment_status || 'CONFIRMED',
+      scannedBy: item.scanned_by || '',
+      scannedByName: item.scanned_by_name || '',
+      scannedAt: item.scanned_at || '',
+      manualCheckinReason: item.manual_checkin_reason || ''
+    }));
+  } catch (err) {
+    console.error('[Supabase fetchBookingsFromSupabase Exception]:', err);
+    return null;
+  }
+}
+
+// Delete Booking from Supabase
+export async function deleteBookingFromSupabase(id: string) {
+  try {
+    const { error } = await supabase.from('bookings').delete().or(`id.eq.${id},booking_code.eq.${id}`);
+    return { success: !error, error };
+  } catch (err) {
+    return { success: false, error: err };
+  }
+}
+
 
 // Save Movie to Supabase
 export async function saveMovieToSupabase(movie: Movie) {
