@@ -747,11 +747,11 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Admin Actions (Complete Movie CRUD + Removal Options)
-  const addMovie = async (movieData: Omit<Movie, 'id'>): Promise<Movie> => {
+   (movieData: Omit<Movie, 'id'>): Promise<Movie> => {
     const newMovie: Movie = { ...movieData, createdAt: new Date().toISOString() };
     const res = await saveMovieToSupabase(newMovie);
     if (!res.success) {
-      showToast(`Failed to save movie to database: ${res.error?.message || 'Unknown error'}`, 'error');
+      showToast(`Failed toconst addMovie = async save movie to database: ${res.error?.message || 'Unknown error'}`, 'error');
       throw new Error(res.error?.message || 'Failed to save movie to Supabase');
     }
     
