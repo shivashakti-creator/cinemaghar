@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { MovieRecord, MovieStatus } from '../types/admin';
-import { INITIAL_MOVIES } from '../data/mockData';
 
 export function useMovies() {
   const [movies, setMovies] = useState<MovieRecord[]>([]);
@@ -21,41 +20,12 @@ export function useMovies() {
 
       console.log('[Supabase Fetch Movies Response]:', { count: data?.length, data, error: fetchErr });
 
-      if (fetchErr || !data || data.length === 0) {
-        console.warn('[Supabase Fetch Movies Notice]: Table unreachable or empty, falling back to initial catalog:', fetchErr?.message || 'Empty data');
-        const fallbackList: MovieRecord[] = INITIAL_MOVIES.map((m) => ({
-          id: m.id,
-          title: m.title,
-          subtitle: m.subtitle || '',
-          nepaliTitle: m.nepaliTitle || '',
-          description: m.synopsis,
-          synopsis: m.synopsis,
-          duration_minutes: parseInt(m.duration) || 135,
-          duration: m.duration,
-          language: m.languages[0] || 'Nepali',
-          languages: m.languages,
-          country: m.country || 'Nepal',
-          age_rating: m.ageRating || 'U/A',
-          release_date: m.releaseDate,
-          end_date: m.endDate || '',
-          trailer_url: m.youtubeTrailerUrl,
-          youtubeTrailerUrl: m.youtubeTrailerUrl,
-          status: m.status as MovieStatus,
-          poster_url: m.poster,
-          poster: m.poster,
-          banner_url: m.backdrop,
-          backdrop: m.backdrop,
-          vertical_poster: m.verticalPoster || '',
-          genre: m.genre,
-          rating: m.rating || 9.0,
-          director: m.director,
-          producer: m.producer,
-          cast_members: m.cast || [],
-          hall_type: m.hallType || 'Hall 1 - IMAX 3D Laser',
-          featured: m.featured ?? true,
-          created_at: m.createdAt || new Date().toISOString()
-        }));
-        setMovies(fallbackList);
+      if (fetchErr) {
+        console.warn('[Supabase Fetch Movies Notice]: Table query error:', fetchErr.message);
+        setError(fetchErr.message);
+        setMovies([]);
+      } else if (!data) {
+        setMovies([]);
       } else {
         const mapped: MovieRecord[] = data.map((item: any) => ({
           id: item.id,
@@ -92,40 +62,9 @@ export function useMovies() {
         setMovies(mapped);
       }
     } catch (err: any) {
-      console.warn('[Supabase Fetch Movies Notice]: Exception fetching movies, using initial catalog:', err.message);
-      const fallbackList: MovieRecord[] = INITIAL_MOVIES.map((m) => ({
-        id: m.id,
-        title: m.title,
-        subtitle: m.subtitle || '',
-        nepaliTitle: m.nepaliTitle || '',
-        description: m.synopsis,
-        synopsis: m.synopsis,
-        duration_minutes: parseInt(m.duration) || 135,
-        duration: m.duration,
-        language: m.languages[0] || 'Nepali',
-        languages: m.languages,
-        country: m.country || 'Nepal',
-        age_rating: m.ageRating || 'U/A',
-        release_date: m.releaseDate,
-        end_date: m.endDate || '',
-        trailer_url: m.youtubeTrailerUrl,
-        youtubeTrailerUrl: m.youtubeTrailerUrl,
-        status: m.status as MovieStatus,
-        poster_url: m.poster,
-        poster: m.poster,
-        banner_url: m.backdrop,
-        backdrop: m.backdrop,
-        vertical_poster: m.verticalPoster || '',
-        genre: m.genre,
-        rating: m.rating || 9.0,
-        director: m.director,
-        producer: m.producer,
-        cast_members: m.cast || [],
-        hall_type: m.hallType || 'Hall 1 - IMAX 3D Laser',
-        featured: m.featured ?? true,
-        created_at: m.createdAt || new Date().toISOString()
-      }));
-      setMovies(fallbackList);
+      console.warn('[Supabase Fetch Movies Notice]: Exception fetching movies from Supabase:', err.message);
+      setError(err.message);
+      setMovies([]);
     } finally {
       setLoading(false);
     }

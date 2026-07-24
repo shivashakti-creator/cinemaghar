@@ -12,7 +12,6 @@ import {
   StaffRoleType
 } from '../types';
 import {
-  INITIAL_MOVIES,
   INITIAL_SHOWTIMES,
   FOOD_ITEMS,
   INITIAL_USER,
@@ -167,11 +166,8 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [lastScannedTicket, setLastScannedTicket] = useState<Booking | null>(null);
 
-  // Load Movies from local storage or default
-  const [movies, setMovies] = useState<Movie[]>(() => {
-    const saved = localStorage.getItem('gajuri_movies');
-    return saved ? JSON.parse(saved) : INITIAL_MOVIES;
-  });
+  // Load Movies directly from Supabase (starts empty until Supabase query returns)
+  const [movies, setMovies] = useState<Movie[]>([]);
 
   // Filter public movies (excluding HIDDEN and ARCHIVED)
   const publicMovies = movies.filter((m) => m.status !== 'HIDDEN' && m.status !== 'ARCHIVED');
@@ -221,9 +217,6 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Sync state to local storage
-  useEffect(() => {
-    localStorage.setItem('gajuri_movies', JSON.stringify(movies));
-  }, [movies]);
 
   useEffect(() => {
     localStorage.setItem('gajuri_showtimes', JSON.stringify(showtimes));
