@@ -676,27 +676,33 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const addMovie = async (movieData: Omit<Movie, 'id'>): Promise<Movie> => {
     const newId = `m-${Date.now()}`;
     const newMovie: Movie = { ...movieData, id: newId, createdAt: new Date().toISOString() };
-    setMovies((prev) => [newMovie, ...prev]);
-    await saveMovieToSupabase(newMovie);
-    showToast(`Movie "${newMovie.title}" added & saved to Supabase`, 'success');
+    const res = await saveMovieToSupabase(newMovie);
+    if (!res.success) {
+      showToast(`Failed to save movie to database: ${res.error?.message || 'Unknown error'}`, 'error');
+      throw new Error(res.error?.message || 'Failed to save movie to Supabase');
+    }
+    
+    // Refresh movies from Supabase
+    const fresh = await fetchMoviesFromSupabase();
+    if (fresh) setMovies(fresh);
+    else setMovies((prev) => [newMovie, ...prev]);
+
+    showToast(`Movie "${newMovie.title}" added & saved to public.movies`, 'success');
     return newMovie;
   };
 
   const updateMovie = async (id: string, updated: Partial<Movie>) => {
-    let updatedMovie: Movie | null = null;
-    setMovies((prev) =>
-      prev.map((m) => {
-        if (m.id === id) {
-          updatedMovie = { ...m, ...updated };
-          return updatedMovie;
-        }
-        return m;
-      })
-    );
-    if (updatedMovie) {
-      await saveMovieToSupabase(updatedMovie);
+    const existing = movies.find((m) => m.id === id);
+    if (!existing) return;
+    const updatedMovie: Movie = { ...existing, ...updated };
+    const res = await saveMovieToSupabase(updatedMovie);
+    if (!res.success) {
+      showToast(`Failed to update movie in database`, 'error');
+      return;
     }
-    showToast(`Movie parameters updated in database`, 'success');
+    const fresh = await fetchMoviesFromSupabase();
+    if (fresh) setMovies(fresh);
+    showToast(`Movie updated in public.movies table`, 'success');
   };
 
   const hideMovie = async (id: string) => {
@@ -710,10 +716,16 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const deleteMoviePermanently = async (id: string) => {
-    setMovies((prev) => prev.filter((m) => m.id !== id));
+    const res = await deleteMovieFromSupabase(id);
+    if (!res.success) {
+      showToast(`Failed to delete movie from database`, 'error');
+      return;
+    }
     setShowtimes((prev) => prev.filter((s) => s.movieId !== id));
-    await deleteMovieFromSupabase(id);
-    showToast(`Movie record permanently removed from system`, 'error');
+    const fresh = await fetchMoviesFromSupabase();
+    if (fresh) setMovies(fresh);
+    else setMovies((prev) => prev.filter((m) => m.id !== id));
+    showToast(`Movie record permanently removed from public.movies`, 'info');
   };
 
   const duplicateMovie = async (id: string): Promise<Movie | null> => {

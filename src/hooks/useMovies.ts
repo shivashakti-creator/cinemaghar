@@ -11,19 +11,23 @@ export function useMovies() {
   // Fetch all movies from Supabase
   const fetchMovies = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
+      console.log('[Supabase Fetch Movies]: Querying public.movies table...');
       const { data, error: fetchErr } = await supabase
         .from('movies')
         .select('*')
         .order('created_at', { ascending: false });
 
+      console.log('[Supabase Fetch Movies Response]:', { count: data?.length, data, error: fetchErr });
+
       if (fetchErr || !data || data.length === 0) {
-        // Fallback to initial mock movies formatted as MovieRecord
-        const formatted: MovieRecord[] = INITIAL_MOVIES.map((m) => ({
+        console.warn('[Supabase Fetch Movies Notice]: Table unreachable or empty, falling back to initial catalog:', fetchErr?.message || 'Empty data');
+        const fallbackList: MovieRecord[] = INITIAL_MOVIES.map((m) => ({
           id: m.id,
           title: m.title,
-          subtitle: m.subtitle,
-          nepaliTitle: m.nepaliTitle,
+          subtitle: m.subtitle || '',
+          nepaliTitle: m.nepaliTitle || '',
           description: m.synopsis,
           synopsis: m.synopsis,
           duration_minutes: parseInt(m.duration) || 135,
@@ -41,17 +45,17 @@ export function useMovies() {
           poster: m.poster,
           banner_url: m.backdrop,
           backdrop: m.backdrop,
-          vertical_poster: m.verticalPoster,
+          vertical_poster: m.verticalPoster || '',
           genre: m.genre,
           rating: m.rating || 9.0,
           director: m.director,
           producer: m.producer,
           cast_members: m.cast || [],
-          hall_type: m.hallType || 'Hall 1 - IMAX 3D',
+          hall_type: m.hallType || 'Hall 1 - IMAX 3D Laser',
           featured: m.featured ?? true,
           created_at: m.createdAt || new Date().toISOString()
         }));
-        setMovies(formatted);
+        setMovies(fallbackList);
       } else {
         const mapped: MovieRecord[] = data.map((item: any) => ({
           id: item.id,
@@ -81,15 +85,47 @@ export function useMovies() {
           director: item.director || '',
           producer: item.producer || '',
           cast_members: Array.isArray(item.cast_members) ? item.cast_members : [],
-          hall_type: item.hall_type || 'Hall 1 - IMAX 3D',
+          hall_type: item.hall_type || 'Hall 1 - IMAX 3D Laser',
           featured: item.featured ?? false,
           created_at: item.created_at || new Date().toISOString()
         }));
         setMovies(mapped);
       }
     } catch (err: any) {
-      console.warn('Movie fetch error:', err);
-      setError(err.message);
+      console.warn('[Supabase Fetch Movies Notice]: Exception fetching movies, using initial catalog:', err.message);
+      const fallbackList: MovieRecord[] = INITIAL_MOVIES.map((m) => ({
+        id: m.id,
+        title: m.title,
+        subtitle: m.subtitle || '',
+        nepaliTitle: m.nepaliTitle || '',
+        description: m.synopsis,
+        synopsis: m.synopsis,
+        duration_minutes: parseInt(m.duration) || 135,
+        duration: m.duration,
+        language: m.languages[0] || 'Nepali',
+        languages: m.languages,
+        country: m.country || 'Nepal',
+        age_rating: m.ageRating || 'U/A',
+        release_date: m.releaseDate,
+        end_date: m.endDate || '',
+        trailer_url: m.youtubeTrailerUrl,
+        youtubeTrailerUrl: m.youtubeTrailerUrl,
+        status: m.status as MovieStatus,
+        poster_url: m.poster,
+        poster: m.poster,
+        banner_url: m.backdrop,
+        backdrop: m.backdrop,
+        vertical_poster: m.verticalPoster || '',
+        genre: m.genre,
+        rating: m.rating || 9.0,
+        director: m.director,
+        producer: m.producer,
+        cast_members: m.cast || [],
+        hall_type: m.hallType || 'Hall 1 - IMAX 3D Laser',
+        featured: m.featured ?? true,
+        created_at: m.createdAt || new Date().toISOString()
+      }));
+      setMovies(fallbackList);
     } finally {
       setLoading(false);
     }
@@ -109,11 +145,12 @@ export function useMovies() {
           const fileExt = file.name.split('.').pop();
           const fileName = `${bucketName}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
           
-          // Try specific bucket first, fallback to 'movies'
+          console.log(`[Supabase Storage Request]: Uploading image to bucket '${bucketName}' as '${fileName}'`);
           let uploadResult = await supabase.storage.from(bucketName).upload(fileName, file);
           let activeBucket = bucketName;
 
           if (uploadResult.error) {
+            console.warn(`[Supabase Storage Warning]: Bucket '${bucketName}' error, attempting fallback bucket 'movies'`, uploadResult.error);
             uploadResult = await supabase.storage.from('movies').upload(fileName, file);
             activeBucket = 'movies';
           }
@@ -121,12 +158,15 @@ export function useMovies() {
           if (!uploadResult.error && uploadResult.data) {
             const { data: publicData } = supabase.storage.from(activeBucket).getPublicUrl(fileName);
             if (publicData?.publicUrl) {
+              console.log('[Supabase Storage Success]: Public URL:', publicData.publicUrl);
               resolve(publicData.publicUrl);
               return;
             }
+          } else if (uploadResult.error) {
+            console.error('[Supabase Storage Error]: Upload failed:', uploadResult.error);
           }
         } catch (err) {
-          console.warn('Storage upload error, using Data URL fallback:', err);
+          console.warn('[Supabase Storage Exception]: Using Data URL fallback:', err);
         }
         resolve(dataUrl);
       };
@@ -134,136 +174,153 @@ export function useMovies() {
     });
   };
 
-  // Create Movie
-  const createMovie = async (movieData: Partial<MovieRecord>) => {
+  // Create Movie directly into public.movies
+  const createMovie = async (movieData: Partial<MovieRecord>): Promise<{ success: boolean; movie?: MovieRecord; error?: string }> => {
     const id = movieData.id || `movie-${Date.now()}`;
-    const newRecord: MovieRecord = {
+    const dbRecord = {
       id,
       title: movieData.title || 'Untitled Movie',
       subtitle: movieData.subtitle || '',
-      nepaliTitle: movieData.nepaliTitle || '',
-      description: movieData.description || movieData.synopsis || '',
-      synopsis: movieData.synopsis || movieData.description || '',
-      duration_minutes: movieData.duration_minutes || 135,
-      duration: movieData.duration || `${movieData.duration_minutes || 135}m`,
-      language: movieData.language || 'Nepali',
-      languages: movieData.languages || ['Nepali'],
-      country: movieData.country || 'Nepal',
-      age_rating: movieData.age_rating || 'U/A',
+      nepali_title: movieData.nepaliTitle || '',
+      poster: movieData.poster_url || movieData.poster || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=800',
+      backdrop: movieData.banner_url || movieData.backdrop || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1600',
+      vertical_poster: movieData.vertical_poster || '',
+      trailer_thumbnail: '',
+      synopsis: movieData.description || movieData.synopsis || 'An exciting cinematic release at Gajuri Cinemas.',
+      duration: movieData.duration || `${movieData.duration_minutes || 135} mins`,
       release_date: movieData.release_date || new Date().toISOString().slice(0, 10),
       end_date: movieData.end_date || '',
-      trailer_url: movieData.trailer_url || movieData.youtubeTrailerUrl || '',
-      youtubeTrailerUrl: movieData.youtubeTrailerUrl || movieData.trailer_url || '',
-      status: movieData.status || 'NOW_SHOWING',
-      poster_url: movieData.poster_url || movieData.poster || '',
-      poster: movieData.poster || movieData.poster_url || '',
-      banner_url: movieData.banner_url || movieData.backdrop || '',
-      backdrop: movieData.backdrop || movieData.banner_url || '',
       genre: movieData.genre || ['Drama'],
       rating: movieData.rating || 9.0,
+      age_rating: movieData.age_rating || 'U/A',
+      censor_rating: 'U/A (Nepal Censor Board)',
+      languages: movieData.languages || [movieData.language || 'Nepali'],
+      country: movieData.country || 'Nepal',
+      industry: 'Nepali',
+      status: movieData.status || 'NOW_SHOWING',
+      youtube_trailer_url: movieData.trailer_url || movieData.youtubeTrailerUrl || '',
+      teaser_url: '',
       director: movieData.director || 'Gajuri Cinema House',
       producer: movieData.producer || 'Gajuri Media Group',
+      main_cast_text: '',
+      music_director: '',
+      cinematographer: '',
       cast_members: movieData.cast_members || [],
-      hall_type: movieData.hall_type || 'Hall 1 - IMAX 3D',
-      featured: movieData.featured ?? true,
-      created_at: new Date().toISOString()
+      hall_type: movieData.hall_type || 'Hall 1 - IMAX 3D Laser',
+      featured: movieData.featured ?? true
     };
 
     try {
-      const { error: dbErr } = await supabase.from('movies').upsert([{
-        id: newRecord.id,
-        title: newRecord.title,
-        subtitle: newRecord.subtitle,
-        nepali_title: newRecord.nepaliTitle,
-        poster: newRecord.poster_url,
-        backdrop: newRecord.banner_url,
-        synopsis: newRecord.description,
-        duration: newRecord.duration,
-        release_date: newRecord.release_date,
-        end_date: newRecord.end_date,
-        genre: newRecord.genre,
-        rating: newRecord.rating,
-        age_rating: newRecord.age_rating,
-        languages: newRecord.languages,
-        country: newRecord.country,
-        status: newRecord.status,
-        youtube_trailer_url: newRecord.trailer_url,
-        director: newRecord.director,
-        producer: newRecord.producer,
-        cast_members: newRecord.cast_members,
-        hall_type: newRecord.hall_type,
-        featured: newRecord.featured
-      }]);
+      console.log('[Supabase Insert Movie Request]: Inserting record into public.movies:', dbRecord);
+      const { data: insertedData, error: dbErr } = await supabase
+        .from('movies')
+        .insert([dbRecord])
+        .select();
 
-      if (dbErr) console.warn('Supabase movie insert error:', dbErr);
+      console.log('[Supabase Insert Movie Response]:', insertedData);
 
-      setMovies((prev) => [newRecord, ...prev]);
-      return { success: true, movie: newRecord };
+      if (dbErr) {
+        console.error('[Supabase Insert Movie Error]: Failed to save to public.movies:', dbErr);
+        return { success: false, error: dbErr.message || 'Failed to insert movie into database' };
+      }
+
+      console.log('[Supabase Insert Movie Success]: Movie saved directly to public.movies table!');
+      // Immediately refresh movie list from Supabase
+      await fetchMovies();
+      return { success: true };
     } catch (err: any) {
-      setMovies((prev) => [newRecord, ...prev]);
-      return { success: true, movie: newRecord };
+      console.error('[Supabase Insert Movie Exception]:', err);
+      return { success: false, error: err.message || 'Unexpected error while inserting movie' };
     }
   };
 
-  // Edit Movie
-  const updateMovie = async (id: string, updates: Partial<MovieRecord>) => {
+  // Edit Movie directly in public.movies
+  const updateMovie = async (id: string, updates: Partial<MovieRecord>): Promise<{ success: boolean; error?: string }> => {
+    const dbUpdates: Record<string, any> = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.subtitle !== undefined) dbUpdates.subtitle = updates.subtitle;
+    if (updates.nepaliTitle !== undefined) dbUpdates.nepali_title = updates.nepaliTitle;
+    if (updates.poster_url || updates.poster) dbUpdates.poster = updates.poster_url || updates.poster;
+    if (updates.banner_url || updates.backdrop) dbUpdates.backdrop = updates.banner_url || updates.backdrop;
+    if (updates.synopsis || updates.description) dbUpdates.synopsis = updates.synopsis || updates.description;
+    if (updates.duration) dbUpdates.duration = updates.duration;
+    if (updates.release_date) dbUpdates.release_date = updates.release_date;
+    if (updates.end_date !== undefined) dbUpdates.end_date = updates.end_date;
+    if (updates.genre) dbUpdates.genre = updates.genre;
+    if (updates.age_rating) dbUpdates.age_rating = updates.age_rating;
+    if (updates.languages) dbUpdates.languages = updates.languages;
+    if (updates.status) dbUpdates.status = updates.status;
+    if (updates.trailer_url || updates.youtubeTrailerUrl) dbUpdates.youtube_trailer_url = updates.trailer_url || updates.youtubeTrailerUrl;
+    if (updates.director !== undefined) dbUpdates.director = updates.director;
+    if (updates.producer !== undefined) dbUpdates.producer = updates.producer;
+    if (updates.cast_members) dbUpdates.cast_members = updates.cast_members;
+    if (updates.hall_type) dbUpdates.hall_type = updates.hall_type;
+    if (updates.featured !== undefined) dbUpdates.featured = updates.featured;
+
     try {
-      const { error: dbErr } = await supabase.from('movies').update({
-        title: updates.title,
-        subtitle: updates.subtitle,
-        nepali_title: updates.nepaliTitle,
-        poster: updates.poster_url || updates.poster,
-        backdrop: updates.banner_url || updates.backdrop,
-        synopsis: updates.description || updates.synopsis,
-        duration: updates.duration,
-        release_date: updates.release_date,
-        end_date: updates.end_date,
-        genre: updates.genre,
-        age_rating: updates.age_rating,
-        languages: updates.languages,
-        status: updates.status,
-        youtube_trailer_url: updates.trailer_url || updates.youtubeTrailerUrl,
-        director: updates.director,
-        producer: updates.producer,
-        cast_members: updates.cast_members,
-        hall_type: updates.hall_type
-      }).eq('id', id);
+      console.log(`[Supabase Update Movie Request]: Updating movie ${id} in public.movies:`, dbUpdates);
+      const { data: updatedData, error: dbErr } = await supabase
+        .from('movies')
+        .update(dbUpdates)
+        .eq('id', id)
+        .select();
 
-      if (dbErr) console.warn('Supabase movie update error:', dbErr);
+      console.log('[Supabase Update Movie Response]:', updatedData);
 
-      setMovies((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, ...updates } : m))
-      );
+      if (dbErr) {
+        console.error('[Supabase Update Movie Error]: Failed to update public.movies:', dbErr);
+        return { success: false, error: dbErr.message || 'Failed to update movie' };
+      }
+
+      console.log(`[Supabase Update Movie Success]: Movie ${id} updated in public.movies`);
+      // Immediately refresh movie list from Supabase
+      await fetchMovies();
       return { success: true };
-    } catch (err) {
-      setMovies((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, ...updates } : m))
-      );
-      return { success: true };
+    } catch (err: any) {
+      console.error('[Supabase Update Movie Exception]:', err);
+      return { success: false, error: err.message || 'Unexpected error updating movie' };
     }
   };
 
-  // Delete Movie
-  const deleteMovie = async (id: string) => {
+  // Delete Movie directly from public.movies
+  const deleteMovie = async (id: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      await supabase.from('movies').delete().eq('id', id);
-      setMovies((prev) => prev.filter((m) => m.id !== id));
+      console.log(`[Supabase Delete Movie Request]: Deleting movie ${id} from public.movies`);
+      const { error: dbErr } = await supabase.from('movies').delete().eq('id', id);
+
+      if (dbErr) {
+        console.error('[Supabase Delete Movie Error]: Failed to delete from public.movies:', dbErr);
+        return { success: false, error: dbErr.message || 'Failed to delete movie' };
+      }
+
+      console.log(`[Supabase Delete Movie Success]: Movie ${id} deleted from public.movies`);
+      // Immediately refresh movie list from Supabase
+      await fetchMovies();
       return { success: true };
-    } catch (err) {
-      setMovies((prev) => prev.filter((m) => m.id !== id));
-      return { success: true };
+    } catch (err: any) {
+      console.error('[Supabase Delete Movie Exception]:', err);
+      return { success: false, error: err.message || 'Unexpected error deleting movie' };
     }
   };
 
-  // Bulk Delete
-  const bulkDeleteMovies = async (ids: string[]) => {
+  // Bulk Delete directly from public.movies
+  const bulkDeleteMovies = async (ids: string[]): Promise<{ success: boolean; error?: string }> => {
     try {
-      await supabase.from('movies').delete().in('id', ids);
-      setMovies((prev) => prev.filter((m) => !ids.includes(m.id)));
+      console.log(`[Supabase Bulk Delete Request]: Deleting movies from public.movies:`, ids);
+      const { error: dbErr } = await supabase.from('movies').delete().in('id', ids);
+
+      if (dbErr) {
+        console.error('[Supabase Bulk Delete Error]: Failed to bulk delete from public.movies:', dbErr);
+        return { success: false, error: dbErr.message || 'Failed to bulk delete movies' };
+      }
+
+      console.log(`[Supabase Bulk Delete Success]: Deleted ${ids.length} movies from public.movies`);
+      // Immediately refresh movie list from Supabase
+      await fetchMovies();
       return { success: true };
-    } catch (err) {
-      setMovies((prev) => prev.filter((m) => !ids.includes(m.id)));
-      return { success: true };
+    } catch (err: any) {
+      console.error('[Supabase Bulk Delete Exception]:', err);
+      return { success: false, error: err.message || 'Unexpected error bulk deleting movies' };
     }
   };
 

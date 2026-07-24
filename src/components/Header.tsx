@@ -83,7 +83,8 @@ export const Header: React.FC = () => {
   };
 
   // Determine active view mode label
-  const isDashboardView = activeTab === 'admin' || activeTab === 'staff';
+  const isAdminView = activeTab === 'admin' || (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin'));
+  const isDashboardView = isAdminView || activeTab === 'staff';
 
   return (
     <header className="sticky top-0 z-50 w-full bg-[#050508]/90 backdrop-blur-xl border-b border-[#D4AF37]/25 shadow-[0_4px_30px_rgba(0,0,0,0.8)] transition-all">
@@ -161,7 +162,7 @@ export const Header: React.FC = () => {
           IN STAFF DASHBOARD: Remove Home, Movies, Showtimes, My Tickets! Show Staff Portal Title/Badge
           IN GENERAL CUSTOMER MODE: Show Home, Movies, Showtimes, My Tickets with Animated Underline (Admin & Staff links hidden!)
         */}
-        {activeTab === 'admin' ? (
+        {isAdminView ? (
           <div className="hidden md:flex items-center justify-center gap-2 flex-1 max-w-xl mx-auto">
             <div className="px-5 py-2 rounded-2xl bg-amber-950/60 border border-amber-500/40 text-amber-300 flex items-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
               <ShieldAlert className="w-4 h-4 text-amber-400 animate-pulse" />
@@ -303,7 +304,7 @@ export const Header: React.FC = () => {
               id="user-profile-dropdown-btn"
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className={`px-3 py-1.5 rounded-full border transition-all flex items-center gap-2 cursor-pointer shadow-lg hover:scale-102 ${
-                activeTab === 'admin'
+                isAdminView
                   ? 'bg-amber-950/80 border-amber-500/70 text-amber-300 hover:border-amber-400'
                   : activeTab === 'staff'
                   ? 'bg-[#1A1B28] border-[#D4AF37]/70 text-[#D4AF37] hover:border-[#D4AF37]'
@@ -319,8 +320,8 @@ export const Header: React.FC = () => {
               </div>
 
               {/* Renamed Badge Label based on Dashboard Context */}
-              <span className="text-xs font-extrabold tracking-wide hidden xs:inline uppercase">
-                {activeTab === 'admin'
+              <span className="text-xs font-extrabold tracking-wide uppercase">
+                {isAdminView
                   ? 'Admin'
                   : activeTab === 'staff'
                   ? 'Staff'

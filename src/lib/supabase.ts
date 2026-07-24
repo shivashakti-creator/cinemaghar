@@ -114,8 +114,16 @@ export async function uploadMediaFileToSupabase(file: File): Promise<string> {
 // Fetch Movies from Supabase
 export async function fetchMoviesFromSupabase(): Promise<Movie[] | null> {
   try {
+    console.log('[Supabase fetchMoviesFromSupabase]: Querying public.movies table...');
     const { data, error } = await supabase.from('movies').select('*').order('created_at', { ascending: false });
-    if (error || !data || data.length === 0) return null;
+    
+    console.log('[Supabase fetchMoviesFromSupabase Response]:', { count: data?.length, error });
+    if (error) {
+      console.warn('[Supabase fetchMoviesFromSupabase Notice]: Supabase database unreachable or returning error:', error.message || error);
+      return null;
+    }
+    if (!data || data.length === 0) return null;
+
     return data.map((item: any) => ({
       id: item.id,
       title: item.title,
@@ -150,7 +158,7 @@ export async function fetchMoviesFromSupabase(): Promise<Movie[] | null> {
       createdAt: item.created_at
     }));
   } catch (err) {
-    console.warn('Fetch movies error:', err);
+    console.error('[Supabase fetchMoviesFromSupabase Exception]:', err);
     return null;
   }
 }
@@ -191,11 +199,16 @@ export async function saveMovieToSupabase(movie: Movie) {
       featured: movie.featured ?? false
     };
 
+    console.log('[Supabase saveMovieToSupabase Request]: Saving record to public.movies:', record);
     const { data, error } = await supabase.from('movies').upsert([record]).select();
-    if (error) console.warn('Supabase upsert movie error:', error);
-    return { success: !error, data };
+
+    console.log('[Supabase saveMovieToSupabase Response]:', data);
+    if (error) {
+      console.error('[Supabase saveMovieToSupabase Error]: Failed to save to public.movies:', error);
+    }
+    return { success: !error, data, error };
   } catch (err) {
-    console.error('Save movie error:', err);
+    console.error('[Supabase saveMovieToSupabase Exception]:', err);
     return { success: false, error: err };
   }
 }
@@ -203,9 +216,17 @@ export async function saveMovieToSupabase(movie: Movie) {
 // Delete Movie from Supabase
 export async function deleteMovieFromSupabase(id: string) {
   try {
+    console.log(`[Supabase deleteMovieFromSupabase Request]: Deleting movie ${id} from public.movies`);
     const { error } = await supabase.from('movies').delete().eq('id', id);
-    return { success: !error };
+
+    if (error) {
+      console.error('[Supabase deleteMovieFromSupabase Error]: Failed to delete from public.movies:', error);
+    } else {
+      console.log(`[Supabase deleteMovieFromSupabase Success]: Deleted movie ${id}`);
+    }
+    return { success: !error, error };
   } catch (err) {
+    console.error('[Supabase deleteMovieFromSupabase Exception]:', err);
     return { success: false, error: err };
   }
 }

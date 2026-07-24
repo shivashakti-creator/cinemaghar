@@ -72,6 +72,10 @@ export const AdminDashboard: React.FC = () => {
   const { profile, signOut } = useAdminAuth();
   const { showToast, setActiveTab: setMainActiveTab } = useCinema();
 
+  useEffect(() => {
+    setMainActiveTab('admin');
+  }, [setMainActiveTab]);
+
   const { movies, loading: loadingMovies, fetchMovies, uploadImageToBucket, createMovie, updateMovie, deleteMovie, bulkDeleteMovies, archiveMovie, toggleMovieStatus } = useMovies();
   const { showtimes, loading: loadingShowtimes, fetchShowtimes, createShowtime, updateShowtime, deleteShowtime, duplicateShowtime } = useShowtimes();
   const { bookings, loading: loadingBookings, fetchBookings, updateBookingStatus, markTicketAsUsed } = useBookings();
@@ -114,15 +118,17 @@ export const AdminDashboard: React.FC = () => {
 
   const [mTitle, setMTitle] = useState('');
   const [mSubtitle, setMSubtitle] = useState('');
-  const [mNepaliTitle, setMNepaliTitle] = useState('');
   const [mDescription, setMDescription] = useState('');
-  const [mDuration, setMDuration] = useState(135);
+  const [mDirector, setMDirector] = useState('');
+  const [mCastNames, setMCastNames] = useState('');
+  const [mDurationHours, setMDurationHours] = useState(2);
+  const [mDurationMins, setMDurationMins] = useState(15);
   const [mLanguage, setMLanguage] = useState('Nepali');
   const [mCountry, setMCountry] = useState('Nepal');
   const [mAgeRating, setMAgeRating] = useState('U/A');
   const [mReleaseDate, setMReleaseDate] = useState('2026-08-01');
   const [mEndDate, setMEndDate] = useState('2026-08-30');
-  const [mTrailerUrl, setMTrailerUrl] = useState('https://www.youtube.com/embed/5-p5f2M1Yc8');
+  const [mTrailerUrl, setMTrailerUrl] = useState('https://www.youtube.com/watch?v=5-p5f2M1Yc8');
   const [mStatus, setMStatus] = useState<MovieStatus>('NOW_SHOWING');
   const [mPosterUrl, setMPosterUrl] = useState('https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=800');
   const [mBannerUrl, setMBannerUrl] = useState('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1600');
@@ -136,15 +142,22 @@ export const AdminDashboard: React.FC = () => {
       setEditingMovie(movie);
       setMTitle(movie.title);
       setMSubtitle(movie.subtitle || '');
-      setMNepaliTitle(movie.nepaliTitle || '');
       setMDescription(movie.description || movie.synopsis || '');
-      setMDuration(movie.duration_minutes || parseInt(movie.duration || '120') || 120);
+      setMDirector(movie.director || '');
+      setMCastNames(
+        Array.isArray(movie.cast_members)
+          ? movie.cast_members.map((c: any) => (typeof c === 'string' ? c : c.name || '')).filter(Boolean).join(', ')
+          : ''
+      );
+      const totalMins = movie.duration_minutes || parseInt(movie.duration || '120') || 120;
+      setMDurationHours(Math.floor(totalMins / 60));
+      setMDurationMins(totalMins % 60);
       setMLanguage(movie.language || 'Nepali');
       setMCountry(movie.country || 'Nepal');
       setMAgeRating(movie.age_rating || 'U/A');
       setMReleaseDate(movie.release_date || '2026-08-01');
       setMEndDate(movie.end_date || '2026-08-30');
-      setMTrailerUrl(movie.trailer_url || movie.youtubeTrailerUrl || '');
+      setMTrailerUrl(movie.trailer_url || movie.youtubeTrailerUrl || 'https://www.youtube.com/watch?v=5-p5f2M1Yc8');
       setMStatus(movie.status);
       setMPosterUrl(movie.poster_url || movie.poster || '');
       setMBannerUrl(movie.banner_url || movie.backdrop || '');
@@ -153,15 +166,17 @@ export const AdminDashboard: React.FC = () => {
       setEditingMovie(null);
       setMTitle('');
       setMSubtitle('');
-      setMNepaliTitle('');
       setMDescription('');
-      setMDuration(135);
+      setMDirector('');
+      setMCastNames('');
+      setMDurationHours(2);
+      setMDurationMins(15);
       setMLanguage('Nepali');
       setMCountry('Nepal');
       setMAgeRating('U/A');
       setMReleaseDate(new Date().toISOString().slice(0, 10));
       setMEndDate('');
-      setMTrailerUrl('https://www.youtube.com/embed/5-p5f2M1Yc8');
+      setMTrailerUrl('https://www.youtube.com/watch?v=5-p5f2M1Yc8');
       setMStatus('NOW_SHOWING');
       setMPosterUrl('https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=800');
       setMBannerUrl('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&q=80&w=1600');
@@ -199,14 +214,22 @@ export const AdminDashboard: React.FC = () => {
       return;
     }
 
+    const totalMins = (mDurationHours * 60) + mDurationMins;
+    const castArray = mCastNames
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((name) => ({ name, role: 'Cast' }));
+
     const payload: Partial<MovieRecord> = {
       title: mTitle,
       subtitle: mSubtitle,
-      nepaliTitle: mNepaliTitle,
       description: mDescription || 'An exciting new cinematic release at Gajuri Cinemas.',
       synopsis: mDescription || 'An exciting new cinematic release at Gajuri Cinemas.',
-      duration_minutes: mDuration,
-      duration: `${mDuration} mins`,
+      director: mDirector || 'Gajuri Cinema House',
+      cast_members: castArray,
+      duration_minutes: totalMins,
+      duration: `${mDurationHours}h ${mDurationMins}m`,
       language: mLanguage,
       languages: [mLanguage],
       country: mCountry,
@@ -224,13 +247,22 @@ export const AdminDashboard: React.FC = () => {
     };
 
     if (editingMovie) {
-      await updateMovie(editingMovie.id, payload);
-      showToast('Movie updated successfully!', 'success');
+      const res = await updateMovie(editingMovie.id, payload);
+      if (res.success) {
+        showToast('Movie updated successfully in public.movies table!', 'success');
+        setShowMovieModal(false);
+      } else {
+        showToast(`Failed to update movie in database: ${res.error || 'Unknown error'}`, 'error');
+      }
     } else {
-      await createMovie(payload);
-      showToast('New movie added to catalog!', 'success');
+      const res = await createMovie(payload);
+      if (res.success) {
+        showToast('New movie saved directly to public.movies table!', 'success');
+        setShowMovieModal(false);
+      } else {
+        showToast(`Failed to save movie to database: ${res.error || 'Unknown error'}`, 'error');
+      }
     }
-    setShowMovieModal(false);
   };
 
   // Filtered Movie List
@@ -621,7 +653,7 @@ export const AdminDashboard: React.FC = () => {
             {/* Public Site Switcher */}
             <button
               id="admin-top-view-public"
-              onClick={() => setMainActiveTab('home')}
+              onClick={() => window.open(window.location.origin, '_blank')}
               className="px-4 py-2 rounded-2xl bg-[#161722] hover:bg-[#202230] border border-white/10 text-slate-200 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
             >
               <ExternalLink className="w-4 h-4 text-[#D4AF37]" />
@@ -1358,12 +1390,36 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[#D4AF37] font-bold mb-1">Nepali Title (नेपाली शीर्षक)</label>
+                  <label className="block text-slate-300 font-bold mb-1">Subtitle / Tagline</label>
                   <input
                     type="text"
-                    value={mNepaliTitle}
-                    onChange={(e) => setMNepaliTitle(e.target.value)}
-                    placeholder="e.g. अवतार: आगो र खरानी"
+                    value={mSubtitle}
+                    onChange={(e) => setMSubtitle(e.target.value)}
+                    placeholder="e.g. The Next Chapter of Pandora"
+                    className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Director Name</label>
+                  <input
+                    type="text"
+                    value={mDirector}
+                    onChange={(e) => setMDirector(e.target.value)}
+                    placeholder="e.g. James Cameron / Nischal Basnet"
+                    className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-bold mb-1">Star Cast (Comma Separated)</label>
+                  <input
+                    type="text"
+                    value={mCastNames}
+                    onChange={(e) => setMCastNames(e.target.value)}
+                    placeholder="e.g. Sam Worthington, Zoe Saldana, Dayahang Rai"
                     className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-[#D4AF37]"
                   />
                 </div>
@@ -1380,15 +1436,52 @@ export const AdminDashboard: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* YouTube Trailer URL Input */}
+              <div>
+                <label className="block text-[#D4AF37] font-bold mb-1">
+                  YouTube Trailer URL (Trailer Player for Customers) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={mTrailerUrl}
+                  onChange={(e) => setMTrailerUrl(e.target.value)}
+                  placeholder="e.g. https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                  className="w-full bg-[#161722] border border-[#D4AF37]/40 rounded-xl p-3 text-white focus:outline-none focus:border-[#D4AF37]"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Customers can watch this trailer directly on the website when selecting watch trailer.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-slate-300 font-bold mb-1">Duration (Mins)</label>
-                  <input
-                    type="number"
-                    value={mDuration}
-                    onChange={(e) => setMDuration(parseInt(e.target.value) || 120)}
-                    className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white"
-                  />
+                  <label className="block text-slate-300 font-bold mb-1">Duration (Hours : Minutes)</label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center bg-[#161722] border border-white/10 rounded-xl px-2 py-1">
+                      <input
+                        type="number"
+                        min="0"
+                        max="12"
+                        value={mDurationHours}
+                        onChange={(e) => setMDurationHours(parseInt(e.target.value) || 0)}
+                        className="w-full bg-transparent text-white focus:outline-none text-center font-bold"
+                      />
+                      <span className="text-slate-400 text-xs pr-1">h</span>
+                    </div>
+                    <span className="text-slate-400 font-bold">:</span>
+                    <div className="flex-1 flex items-center bg-[#161722] border border-white/10 rounded-xl px-2 py-1">
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={mDurationMins}
+                        onChange={(e) => setMDurationMins(parseInt(e.target.value) || 0)}
+                        className="w-full bg-transparent text-white focus:outline-none text-center font-bold"
+                      />
+                      <span className="text-slate-400 text-xs pr-1">m</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -1488,10 +1581,14 @@ export const AdminDashboard: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-300 font-bold mb-1">Hall / Screen</label>
-                  <select value={stHall} onChange={(e) => setStHall(e.target.value)} className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white">
-                    <option value="Hall 1 - IMAX 3D">Hall 1 - IMAX 3D</option>
-                    <option value="Hall 2 - Gajuri Dolby Atmos">Hall 2 - Gajuri Dolby Atmos</option>
+                  <label className="block text-slate-300 font-bold mb-1">Format (2D / 3D Optional)</label>
+                  <select
+                    value={stHall.includes('3D') ? '3D' : '2D'}
+                    onChange={(e) => setStHall(`Hall 1 - ${e.target.value}`)}
+                    className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white"
+                  >
+                    <option value="2D">2D Digital</option>
+                    <option value="3D">3D RealD</option>
                   </select>
                 </div>
 
@@ -1513,19 +1610,19 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">Regular (NPR)</label>
-                  <input type="number" value={stRegPrice} onChange={(e) => setStRegPrice(parseInt(e.target.value) || 350)} className="w-full bg-[#161722] border border-white/10 rounded-xl p-2.5 text-white" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">Premium (NPR)</label>
-                  <input type="number" value={stPremPrice} onChange={(e) => setStPremPrice(parseInt(e.target.value) || 500)} className="w-full bg-[#161722] border border-white/10 rounded-xl p-2.5 text-white" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-bold mb-1">VIP (NPR)</label>
-                  <input type="number" value={stVipPrice} onChange={(e) => setStVipPrice(parseInt(e.target.value) || 800)} className="w-full bg-[#161722] border border-white/10 rounded-xl p-2.5 text-white" />
-                </div>
+              <div>
+                <label className="block text-slate-300 font-bold mb-1">Ticket Price (NPR)</label>
+                <input
+                  type="number"
+                  value={stRegPrice}
+                  onChange={(e) => {
+                    const price = parseInt(e.target.value) || 350;
+                    setStRegPrice(price);
+                    setStPremPrice(price);
+                    setStVipPrice(price);
+                  }}
+                  className="w-full bg-[#161722] border border-white/10 rounded-xl p-3 text-white"
+                />
               </div>
 
               <div className="p-3 bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-2xl text-[11px] text-[#D4AF37]">

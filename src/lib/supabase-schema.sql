@@ -133,13 +133,9 @@ ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scan_logs ENABLE ROW LEVEL SECURITY;
 
--- Allow public read for non-hidden movies
-CREATE POLICY "Public read movies" ON movies
-  FOR SELECT USING (status != 'HIDDEN' AND status != 'ARCHIVED');
-
--- Allow authenticated admins or anon client insert/update for demo
-CREATE POLICY "Admin full access movies" ON movies
-  FOR ALL USING (true);
+-- Allow public full access for movies (SELECT, INSERT, UPDATE, DELETE)
+CREATE POLICY "Public full access movies" ON movies
+  FOR ALL USING (true) WITH CHECK (true);
 
 CREATE POLICY "Public read showtimes" ON showtimes
   FOR SELECT USING (true);
