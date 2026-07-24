@@ -254,11 +254,16 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Fetch initial movies, showtimes, and bookings from Supabase on mount
   useEffect(() => {
-    fetchMoviesFromSupabase().then((data) => {
-      if (data !== null) {
-        setMovies(data);
-      }
-    });
+    const refreshMovies = () => {
+      fetchMoviesFromSupabase().then((data) => {
+        if (data !== null) {
+          setMovies(data);
+        }
+      });
+    };
+
+    refreshMovies();
+
     fetchShowtimesFromSupabase().then((data) => {
       if (data !== null && data.length > 0) {
         setShowtimes(data);
@@ -269,6 +274,9 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setBookings(data);
       }
     });
+
+    window.addEventListener('movies_updated', refreshMovies);
+    return () => window.removeEventListener('movies_updated', refreshMovies);
   }, []);
 
   // Staff Auth & Operations
@@ -750,8 +758,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     // Refresh movies from Supabase
     const fresh = await fetchMoviesFromSupabase();
-    if (fresh) setMovies(fresh);
-    else setMovies((prev) => [newMovie, ...prev]);
+    if (fresh !== null) setMovies(fresh);
 
     showToast(`Movie "${newMovie.title}" added & saved to public.movies`, 'success');
     return newMovie;
@@ -767,7 +774,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
     const fresh = await fetchMoviesFromSupabase();
-    if (fresh) setMovies(fresh);
+    if (fresh !== null) setMovies(fresh);
     showToast(`Movie updated in public.movies table`, 'success');
   };
 
@@ -789,8 +796,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     setShowtimes((prev) => prev.filter((s) => s.movieId !== id));
     const fresh = await fetchMoviesFromSupabase();
-    if (fresh) setMovies(fresh);
-    else setMovies((prev) => prev.filter((m) => m.id !== id));
+    if (fresh !== null) setMovies(fresh);
     showToast(`Movie record permanently removed from public.movies`, 'info');
   };
 

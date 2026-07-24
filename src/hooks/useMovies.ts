@@ -113,7 +113,7 @@ export function useMovies() {
     });
   };
 
-  // Create Movie directly into public.movies
+    // Create Movie directly into public.movies
   const createMovie = async (movieData: Partial<MovieRecord>): Promise<{ success: boolean; movie?: MovieRecord; error?: string }> => {
     const id = movieData.id || `movie-${Date.now()}`;
     const dbRecord = {
@@ -127,6 +127,7 @@ export function useMovies() {
       trailer_thumbnail: '',
       synopsis: movieData.description || movieData.synopsis || 'An exciting cinematic release at Gajuri Cinemas.',
       duration: movieData.duration || `${movieData.duration_minutes || 135} mins`,
+      duration_minutes: movieData.duration_minutes || 120,
       release_date: movieData.release_date || new Date().toISOString().slice(0, 10),
       end_date: movieData.end_date || '',
       genre: movieData.genre || ['Drama'],
@@ -149,62 +150,30 @@ export function useMovies() {
       featured: movieData.featured ?? true
     };
 
-    const newLocalMovie: MovieRecord = {
-      id,
-      title: dbRecord.title,
-      subtitle: dbRecord.subtitle,
-      nepaliTitle: dbRecord.nepali_title,
-      description: dbRecord.synopsis,
-      synopsis: dbRecord.synopsis,
-      duration_minutes: movieData.duration_minutes || 120,
-      duration: dbRecord.duration,
-      language: dbRecord.languages[0] || 'Nepali',
-      languages: dbRecord.languages,
-      country: dbRecord.country,
-      age_rating: dbRecord.age_rating,
-      release_date: dbRecord.release_date,
-      end_date: dbRecord.end_date,
-      trailer_url: dbRecord.youtube_trailer_url,
-      youtubeTrailerUrl: dbRecord.youtube_trailer_url,
-      status: dbRecord.status as MovieStatus,
-      poster_url: dbRecord.poster,
-      poster: dbRecord.poster,
-      banner_url: dbRecord.backdrop,
-      backdrop: dbRecord.backdrop,
-      vertical_poster: dbRecord.vertical_poster,
-      genre: dbRecord.genre,
-      rating: dbRecord.rating,
-      director: dbRecord.director,
-      producer: dbRecord.producer,
-      cast_members: dbRecord.cast_members,
-      hall_type: dbRecord.hall_type,
-      featured: dbRecord.featured,
-      created_at: new Date().toISOString()
-    };
-
-    // Optimistically prepend to local state
-    setMovies((prev) => [newLocalMovie, ...prev.filter((m) => m.id !== id)]);
-
     try {
       console.log('[Supabase Insert Movie Request]: Inserting record into public.movies:', dbRecord);
       const { data: insertedData, error: dbErr } = await supabase
         .from('movies')
-        .insert([dbRecord])
+        .upsert([dbRecord])
         .select();
 
-      console.log('[Supabase Insert Movie Response]:', insertedData);
+      console.log('[Supabase Insert Movie Response]:', { data: insertedData, error: dbErr });
 
       if (dbErr) {
-        console.warn('[Supabase Insert Movie Warning]: Database error, but saved locally:', dbErr);
-        return { success: true, movie: newLocalMovie };
+        console.error('[Supabase Insert Movie Error]: Failed to save to database:', dbErr);
+        return { success: false, error: dbErr.message || 'Failed to insert movie into database' };
       }
 
       console.log('[Supabase Insert Movie Success]: Movie saved directly to public.movies table!');
+      
+      // Immediately re-fetch from database to ensure state matches public.movies table exactly
       await fetchMovies();
-      return { success: true, movie: newLocalMovie };
+      window.dispatchEvent(new Event('movies_updated'));
+      
+      return { success: true };
     } catch (err: any) {
-      console.warn('[Supabase Insert Movie Exception]: Fallback to local movie state:', err);
-      return { success: true, movie: newLocalMovie };
+      console.error('[Supabase Insert Movie Exception]: Database operation threw error:', err);
+      return { success: false, error: err.message || 'Exception during movie insert' };
     }
   };
 
@@ -231,9 +200,6 @@ export function useMovies() {
     if (updates.hall_type) dbUpdates.hall_type = updates.hall_type;
     if (updates.featured !== undefined) dbUpdates.featured = updates.featured;
 
-    // Optimistically update local state
-    setMovies((prev) => prev.map((m) => (m.id === id ? { ...m, ...updates } : m)));
-
     try {
       console.log(`[Supabase Update Movie Request]: Updating movie ${id} in public.movies:`, dbUpdates);
       const { data: updatedData, error: dbErr } = await supabase
@@ -242,64 +208,62 @@ export function useMovies() {
         .eq('id', id)
         .select();
 
-      console.log('[Supabase Update Movie Response]:', updatedData);
+      console.log('[Supabase Update Movie Response]:', { data: updatedData, error: dbErr });
 
       if (dbErr) {
-        console.warn('[Supabase Update Movie Warning]: DB error, but state updated locally:', dbErr);
-        return { success: true };
+        console.error('[Supabase Update Movie Error]: Failed to update database:', dbErr);
+        return { success: false, error: dbErr.message || 'Failed to update movie in database' };
       }
 
       console.log(`[Supabase Update Movie Success]: Movie ${id} updated in public.movies`);
       await fetchMovies();
+      window.dispatchEvent(new Event('movies_updated'));
       return { success: true };
     } catch (err: any) {
-      console.warn('[Supabase Update Movie Exception]: Updated locally:', err);
-      return { success: true };
+      console.error('[Supabase Update Movie Exception]: Database update exception:', err);
+      return { success: false, error: err.message || 'Exception during movie update' };
     }
   };
 
   // Delete Movie directly from public.movies
   const deleteMovie = async (id: string): Promise<{ success: boolean; error?: string }> => {
-    // Optimistically remove from local state
-    setMovies((prev) => prev.filter((m) => m.id !== id));
-
     try {
       console.log(`[Supabase Delete Movie Request]: Deleting movie ${id} from public.movies`);
       const { error: dbErr } = await supabase.from('movies').delete().eq('id', id);
 
       if (dbErr) {
-        console.warn('[Supabase Delete Movie Warning]: DB error, but removed locally:', dbErr);
-        return { success: true };
+        console.error('[Supabase Delete Movie Error]: Failed to delete from database:', dbErr);
+        return { success: false, error: dbErr.message || 'Failed to delete movie from database' };
       }
 
       console.log(`[Supabase Delete Movie Success]: Movie ${id} deleted from public.movies`);
       await fetchMovies();
+      window.dispatchEvent(new Event('movies_updated'));
       return { success: true };
     } catch (err: any) {
-      console.warn('[Supabase Delete Movie Exception]: Removed locally:', err);
-      return { success: true };
+      console.error('[Supabase Delete Movie Exception]: Database delete exception:', err);
+      return { success: false, error: err.message || 'Exception during movie deletion' };
     }
   };
 
   // Bulk Delete directly from public.movies
   const bulkDeleteMovies = async (ids: string[]): Promise<{ success: boolean; error?: string }> => {
-    setMovies((prev) => prev.filter((m) => !ids.includes(m.id)));
-
     try {
       console.log(`[Supabase Bulk Delete Request]: Deleting movies from public.movies:`, ids);
       const { error: dbErr } = await supabase.from('movies').delete().in('id', ids);
 
       if (dbErr) {
-        console.warn('[Supabase Bulk Delete Warning]: DB error, removed locally:', dbErr);
-        return { success: true };
+        console.error('[Supabase Bulk Delete Error]: Failed bulk delete:', dbErr);
+        return { success: false, error: dbErr.message || 'Failed bulk delete from database' };
       }
 
       console.log(`[Supabase Bulk Delete Success]: Deleted ${ids.length} movies from public.movies`);
       await fetchMovies();
+      window.dispatchEvent(new Event('movies_updated'));
       return { success: true };
     } catch (err: any) {
-      console.warn('[Supabase Bulk Delete Exception]: Removed locally:', err);
-      return { success: true };
+      console.error('[Supabase Bulk Delete Exception]: Exception during bulk delete:', err);
+      return { success: false, error: err.message || 'Exception during bulk delete' };
     }
   };
 
