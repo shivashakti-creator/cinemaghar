@@ -156,29 +156,22 @@ export class PaymentManager {
     // Log request
     this.logPayment(bookingRecord.id, bookingRef, req.paymentMethod, { req }, {}, 'PENDING');
 
-    // 3. Delegate to gateway
-    if (req.paymentMethod === 'esewa') {
-      return await esewaService.initiatePayment(req, bookingRef, appUrl);
-    } else if (req.paymentMethod === 'khalti') {
-      return await khaltiService.initiatePayment(req, bookingRef, appUrl);
-    } else if (req.paymentMethod === 'fonepay') {
-      return await fonepayService.initiatePayment(req, bookingRef, appUrl);
-    } else {
-      // Counter Pay at Cinema
-      bookingRecord.payment_status = 'pending';
-      bookingRecord.booking_status = 'confirmed'; // Reservation confirmed for counter pickup
-      
-      this.lockSeatsPermanently(req.showId, req.selectedSeats, bookingRef);
+    // 3. Demo Payment Simulation for all gateways
+    bookingRecord.payment_status = 'success';
+    bookingRecord.booking_status = 'confirmed';
+    bookingRecord.transaction_id = `DEMO-${req.paymentMethod.toUpperCase()}-${Math.floor(1000000000 + Math.random() * 9000000000)}`;
 
-      return {
-        success: true,
-        bookingReference: bookingRef,
-        bookingId: bookingRecord.id,
-        paymentMethod: 'counter',
-        paymentUrl: `${appUrl}/booking/success?ref=${bookingRef}`,
-        expiresAt
-      };
-    }
+    this.lockSeatsPermanently(req.showId, req.selectedSeats, bookingRef);
+    this.logPayment(bookingRecord.id, bookingRef, req.paymentMethod, { req }, { status: 'SUCCESS' }, 'SUCCESS');
+
+    return {
+      success: true,
+      bookingReference: bookingRef,
+      bookingId: bookingRecord.id,
+      paymentMethod: req.paymentMethod,
+      paymentUrl: `${appUrl}/booking/success?ref=${bookingRef}`,
+      expiresAt
+    };
   }
 
   /**

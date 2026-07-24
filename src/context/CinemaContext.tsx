@@ -41,6 +41,8 @@ interface CinemaContextType {
   // Navigation & View
   activeTab: 'home' | 'movies' | 'showtimes' | 'account' | 'admin' | 'contact' | 'staff';
   setActiveTab: (tab: 'home' | 'movies' | 'showtimes' | 'account' | 'admin' | 'contact' | 'staff') => void;
+  accountSubTab: 'profile' | 'tickets' | 'notifications' | 'appearance' | 'security';
+  setAccountSubTab: (subTab: 'profile' | 'tickets' | 'notifications' | 'appearance' | 'security') => void;
   staffSubTab: StaffSubTab;
   setStaffSubTab: (subTab: StaffSubTab) => void;
   
@@ -131,6 +133,7 @@ const CinemaContext = createContext<CinemaContextType | undefined>(undefined);
 
 export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<'home' | 'movies' | 'showtimes' | 'account' | 'admin' | 'contact' | 'staff'>('home');
+  const [accountSubTab, setAccountSubTab] = useState<'profile' | 'tickets' | 'notifications' | 'appearance' | 'security'>('tickets');
   const [staffSubTab, setStaffSubTab] = useState<StaffSubTab>('login');
 
   // Load Admin Session from local storage
@@ -828,6 +831,8 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       value={{
         activeTab,
         setActiveTab,
+        accountSubTab,
+        setAccountSubTab,
         staffSubTab,
         setStaffSubTab,
         movies,

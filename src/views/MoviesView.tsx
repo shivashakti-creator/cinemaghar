@@ -652,7 +652,7 @@ export const MoviesView: React.FC = () => {
                     <User className="w-3.5 h-3.5" />
                     <span>Starring Cast</span>
                   </h4>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-2.5">
                     {selectedMovieDetail.cast.map((c, i) => (
                       <div
                         key={i}
@@ -660,14 +660,11 @@ export const MoviesView: React.FC = () => {
                           setSelectedMovieDetail(null);
                           setSearchQuery(c.name);
                         }}
-                        className="flex items-center gap-2 bg-[#1A1B28] p-1.5 pr-3 rounded-xl border border-white/5 hover:border-[#D4AF37]/50 cursor-pointer transition-all"
+                        className="bg-[#1A1B28] px-3.5 py-2 rounded-xl border border-white/10 hover:border-[#D4AF37]/60 cursor-pointer transition-all"
                         title={`Click to filter movies starring ${c.name}`}
                       >
-                        <img src={c.image} alt={c.name} className="w-8 h-8 rounded-full object-cover" />
-                        <div>
-                          <p className="text-xs font-bold text-white hover:text-[#D4AF37]">{c.name}</p>
-                          <p className="text-[10px] text-slate-400">{c.role}</p>
-                        </div>
+                        <p className="text-xs font-bold text-white hover:text-[#D4AF37]">{c.name}</p>
+                        {c.role && <p className="text-[10px] text-slate-400 mt-0.5">{c.role}</p>}
                       </div>
                     ))}
                   </div>

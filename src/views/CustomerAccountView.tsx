@@ -25,8 +25,7 @@ import { Appearance } from '../pages/dashboard/Appearance';
 export type DashboardTab = 'profile' | 'tickets' | 'notifications' | 'appearance' | 'security';
 
 export const CustomerAccountView: React.FC = () => {
-  const { user, bookings, deleteTicket, showToast, setActiveTab } = useCinema();
-  const [activeDashboardTab, setActiveDashboardTab] = useState<DashboardTab>('profile');
+  const { user, bookings, deleteTicket, showToast, setActiveTab, accountSubTab, setAccountSubTab } = useCinema();
   const [selectedTicketModal, setSelectedTicketModal] = useState<Booking | null>(null);
 
   const activeTickets = bookings.filter((b) => b.status === 'CONFIRMED' || b.status === 'CHECKED_IN');
@@ -106,41 +105,41 @@ export const CustomerAccountView: React.FC = () => {
       <div className="bg-white dark:bg-[#12131C] border border-slate-200 dark:border-white/10 rounded-2xl p-2 flex items-center gap-1 overflow-x-auto shadow-md">
         
         <button
-          id="dashboard-tab-profile"
-          onClick={() => setActiveDashboardTab('profile')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-            activeDashboardTab === 'profile'
-              ? 'bg-[#D4AF37] text-black shadow-md'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'
-          }`}
-        >
-          <User className="w-4 h-4" />
-          <span>Profile</span>
-        </button>
-
-        <button
           id="dashboard-tab-tickets"
-          onClick={() => setActiveDashboardTab('tickets')}
+          onClick={() => setAccountSubTab('tickets')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-            activeDashboardTab === 'tickets'
-              ? 'bg-[#D4AF37] text-black shadow-md'
+            accountSubTab === 'tickets'
+              ? 'bg-[#D4AF37] text-black shadow-md font-black'
               : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'
           }`}
         >
-          <Ticket className="w-4 h-4" />
-          <span>Tickets & History</span>
+          <Ticket className="w-4 h-4 text-black" />
+          <span>My Tickets & History</span>
           {activeTickets.length > 0 && (
-            <span className="bg-black/20 text-black px-1.5 py-0.5 rounded-full text-[10px] font-extrabold">
+            <span className="bg-black text-white px-2 py-0.5 rounded-full text-[10px] font-black">
               {activeTickets.length}
             </span>
           )}
         </button>
 
         <button
-          id="dashboard-tab-notifications"
-          onClick={() => setActiveDashboardTab('notifications')}
+          id="dashboard-tab-profile"
+          onClick={() => setAccountSubTab('profile')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-            activeDashboardTab === 'notifications'
+            accountSubTab === 'profile'
+              ? 'bg-[#D4AF37] text-black shadow-md'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'
+          }`}
+        >
+          <User className="w-4 h-4" />
+          <span>Profile & Account</span>
+        </button>
+
+        <button
+          id="dashboard-tab-notifications"
+          onClick={() => setAccountSubTab('notifications')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+            accountSubTab === 'notifications'
               ? 'bg-[#D4AF37] text-black shadow-md'
               : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'
           }`}
@@ -151,9 +150,9 @@ export const CustomerAccountView: React.FC = () => {
 
         <button
           id="dashboard-tab-theme"
-          onClick={() => setActiveDashboardTab('appearance')}
+          onClick={() => setAccountSubTab('appearance')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-            activeDashboardTab === 'appearance'
+            accountSubTab === 'appearance'
               ? 'bg-[#D4AF37] text-black shadow-md'
               : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'
           }`}
@@ -164,9 +163,9 @@ export const CustomerAccountView: React.FC = () => {
 
         <button
           id="dashboard-tab-security"
-          onClick={() => setActiveDashboardTab('security')}
+          onClick={() => setAccountSubTab('security')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-            activeDashboardTab === 'security'
+            accountSubTab === 'security'
               ? 'bg-[#D4AF37] text-black shadow-md'
               : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'
           }`}
@@ -187,10 +186,10 @@ export const CustomerAccountView: React.FC = () => {
       </div>
 
       {/* TAB CONTENT: THEME SETTINGS (APPEARANCE) */}
-      {activeDashboardTab === 'appearance' && <Appearance />}
+      {accountSubTab === 'appearance' && <Appearance />}
 
       {/* TAB CONTENT: PROFILE & REWARDS */}
-      {activeDashboardTab === 'profile' && (
+      {accountSubTab === 'profile' && (
         <div className="space-y-8 animate-fade-in">
           {/* Gajuri Club Rewards Catalog */}
           <div className="bg-[#12131C] rounded-3xl border border-white/10 p-6 sm:p-8 space-y-6">
@@ -250,7 +249,7 @@ export const CustomerAccountView: React.FC = () => {
       )}
 
       {/* TAB CONTENT: TICKETS & HISTORY */}
-      {activeDashboardTab === 'tickets' && (
+      {accountSubTab === 'tickets' && (
         <div className="space-y-8 animate-fade-in">
           {/* Active E-Tickets */}
           <div className="space-y-6">
@@ -367,7 +366,7 @@ export const CustomerAccountView: React.FC = () => {
       )}
 
       {/* TAB CONTENT: NOTIFICATIONS */}
-      {activeDashboardTab === 'notifications' && (
+      {accountSubTab === 'notifications' && (
         <div className="bg-[#12131C] rounded-3xl border border-white/10 p-6 sm:p-8 space-y-6 animate-fade-in">
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-[#D4AF37]" />
@@ -395,7 +394,7 @@ export const CustomerAccountView: React.FC = () => {
       )}
 
       {/* TAB CONTENT: SECURITY */}
-      {activeDashboardTab === 'security' && (
+      {accountSubTab === 'security' && (
         <div className="bg-[#12131C] rounded-3xl border border-white/10 p-6 sm:p-8 space-y-6 animate-fade-in">
           <div className="flex items-center gap-2">
             <Lock className="w-5 h-5 text-[#D4AF37]" />

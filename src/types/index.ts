@@ -99,7 +99,25 @@ export interface SelectedSnack {
   price: number;
 }
 
-export type PaymentMethod = 'eSewa' | 'Khalti' | 'IME Pay' | 'Card' | 'Counter';
+export type PaymentMethod = 
+  | 'eSewa' 
+  | 'Khalti' 
+  | 'Fonepay QR' 
+  | 'ConnectIPS' 
+  | 'IME Pay' 
+  | 'Visa' 
+  | 'Mastercard' 
+  | 'Cash Counter'
+  | 'Card'
+  | 'Counter'
+  | 'esewa'
+  | 'khalti'
+  | 'fonepay'
+  | 'connectips'
+  | 'imepay'
+  | 'visa'
+  | 'mastercard'
+  | 'counter';
 
 export type UserRole = 'user' | 'staff' | 'admin';
 

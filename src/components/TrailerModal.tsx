@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useCinema } from '../context/CinemaContext';
-import { X, Film, Star, Clock, Calendar, Ticket, ShieldCheck, User, Users, Play, Sparkles } from 'lucide-react';
+import { X, Film, Star, Clock, Calendar, Ticket, ShieldCheck, User, Users, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const TrailerModal: React.FC = () => {
@@ -108,10 +108,6 @@ export const TrailerModal: React.FC = () => {
                   
                   {/* Badges Bar */}
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-[#D4AF37] text-black shadow-md flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" />
-                      <span>{movie.hallType}</span>
-                    </span>
                     <span className="px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold bg-white/10 text-amber-300 border border-white/10">
                       {movie.industry}
                     </span>

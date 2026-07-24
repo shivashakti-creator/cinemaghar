@@ -1,4 +1,12 @@
-export type PaymentGateway = 'esewa' | 'khalti' | 'fonepay' | 'counter';
+export type PaymentGateway = 
+  | 'esewa' 
+  | 'khalti' 
+  | 'fonepay' 
+  | 'connectips' 
+  | 'imepay' 
+  | 'visa' 
+  | 'mastercard' 
+  | 'counter';
 
 export type BookingStatus = 
   | 'pending'
