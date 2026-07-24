@@ -24,6 +24,7 @@ export interface Movie {
   trailerThumbnail?: string;
   synopsis: string;
   duration: string;
+  duration_minutes?: number;
   releaseDate: string;
   endDate?: string;
   genre: string[];

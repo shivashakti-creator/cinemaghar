@@ -39,6 +39,31 @@ CREATE TABLE IF NOT EXISTS movies (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ===================================================
+-- MIGRATION: ADD MISSING COLUMNS TO EXISTING public.movies
+-- ===================================================
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS subtitle TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS nepali_title TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS vertical_poster TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS trailer_thumbnail TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS duration_minutes INTEGER DEFAULT 120;
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS end_date TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS rating NUMERIC(3,1) DEFAULT 9.0;
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS age_rating TEXT DEFAULT 'U/A';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS censor_rating TEXT DEFAULT 'U/A (Nepal Censor Board)';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Nepal';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS industry TEXT DEFAULT 'Nepali';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS youtube_trailer_url TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS teaser_url TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS director TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS producer TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS main_cast_text TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS music_director TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS cinematographer TEXT DEFAULT '';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS cast_members JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS hall_type TEXT DEFAULT 'Hall 1 - IMAX 3D Laser';
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT true;
+
 -- 2. SHOWTIMES TABLE
 CREATE TABLE IF NOT EXISTS showtimes (
   id VARCHAR(100) PRIMARY KEY,
