@@ -87,10 +87,6 @@ export const ShowtimesView: React.FC = () => {
                       </div>
                     </div>
                   </div>
-
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/30">
-                    {movie.hallType}
-                  </span>
                 </div>
 
                 {/* Showtimes Cards */}
@@ -110,13 +106,9 @@ export const ShowtimesView: React.FC = () => {
                           <span className="text-lg font-bold text-white font-mono group-hover:text-[#D4AF37] transition-colors">
                             {st.time}
                           </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-black text-[#D4AF37] border border-[#D4AF37]/30">
-                            {st.format}
-                          </span>
                         </div>
 
                         <div className="space-y-1 text-xs text-slate-400">
-                          <p className="line-clamp-1">{st.hallName}</p>
                           <p className="text-emerald-400 font-semibold flex items-center gap-1">
                             <Armchair className="w-3.5 h-3.5" />
                             <span>{availableSeats} Seats Available</span>

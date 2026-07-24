@@ -79,7 +79,7 @@ export const INITIAL_MOVIES: Movie[] = [
       { name: 'Prakash Saput', role: 'Kamal', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300' },
       { name: 'Anjan Babu', role: 'Young Kamal', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300' }
     ],
-    hallType: 'Hall 1 - IMAX 3D Laser',
+    hallType: 'Hall 1',
     featured: true
   },
   {
@@ -104,7 +104,7 @@ export const INITIAL_MOVIES: Movie[] = [
       { name: 'Rabindra Singh Baniya', role: 'Joyes', image: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=300' },
       { name: 'Rabindra Jha', role: 'Munna', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=300' }
     ],
-    hallType: 'Hall 2 - Gajuri Dolby Atmos',
+    hallType: 'Hall 2',
     featured: true
   },
   {
@@ -128,7 +128,7 @@ export const INITIAL_MOVIES: Movie[] = [
       { name: 'Thinley Lhamo', role: 'Pema', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300' },
       { name: 'Sonam Topden', role: 'Karma', image: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=300' }
     ],
-    hallType: 'Hall 1 - IMAX 3D Laser',
+    hallType: 'Hall 1',
     featured: false
   },
   {
@@ -153,7 +153,7 @@ export const INITIAL_MOVIES: Movie[] = [
       { name: 'Amitabh Bachchan', role: 'Ashwatthama', image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=300' },
       { name: 'Deepika Padukone', role: 'Sumathi', image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=300' }
     ],
-    hallType: 'Hall 1 - IMAX 3D Laser',
+    hallType: 'Hall 1',
     featured: true
   },
   {
@@ -178,7 +178,7 @@ export const INITIAL_MOVIES: Movie[] = [
       { name: 'Shraddha Kapoor', role: 'Mysterious Woman', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=300' },
       { name: 'Pankaj Tripathi', role: 'Rudra', image: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=300' }
     ],
-    hallType: 'Hall 2 - Gajuri Dolby Atmos',
+    hallType: 'Hall 2',
     featured: false
   },
   {
@@ -203,7 +203,7 @@ export const INITIAL_MOVIES: Movie[] = [
       { name: 'Zendaya', role: 'Chani', image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&q=80&w=300' },
       { name: 'Javier Bardem', role: 'Stilgar', image: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=300' }
     ],
-    hallType: 'Hall 1 - IMAX 3D Laser',
+    hallType: 'Hall 1',
     featured: true
   },
   {
@@ -227,7 +227,7 @@ export const INITIAL_MOVIES: Movie[] = [
       { name: 'Ryan Reynolds', role: 'Wade Wilson / Deadpool', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300' },
       { name: 'Hugh Jackman', role: 'Logan / Wolverine', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300' }
     ],
-    hallType: 'Hall 1 - IMAX 3D Laser',
+    hallType: 'Hall 1',
     featured: false
   },
   {
@@ -251,7 +251,7 @@ export const INITIAL_MOVIES: Movie[] = [
       { name: 'Anmol KC', role: 'Rudra', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=300' },
       { name: 'Swastima Khadka', role: 'Trishana', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300' }
     ],
-    hallType: 'Hall 1 - IMAX 3D Laser',
+    hallType: 'Hall 1',
     featured: true
   },
   {
@@ -276,7 +276,7 @@ export const INITIAL_MOVIES: Movie[] = [
       { name: 'Rashmika Mandanna', role: 'Srivalli', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300' },
       { name: 'Fahadh Faasil', role: 'Bhanwar Singh', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300' }
     ],
-    hallType: 'Hall 1 - IMAX 3D Laser',
+    hallType: 'Hall 1',
     featured: true
   },
   {
@@ -301,7 +301,7 @@ export const INITIAL_MOVIES: Movie[] = [
       { name: 'Pedro Pascal', role: 'Marcus Acacius', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300' },
       { name: 'Denzel Washington', role: 'Macrinus', image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=300' }
     ],
-    hallType: 'Hall 1 - IMAX 3D Laser',
+    hallType: 'Hall 1',
     featured: false
   }
 ];
@@ -312,11 +312,11 @@ export const INITIAL_SHOWTIMES: Showtime[] = [
     id: 's-101',
     movieId: 'm-1',
     hallId: 'hall-1',
-    hallName: 'Hall 1 - IMAX 3D Laser',
+    hallName: 'Hall 1',
     date: '2026-07-23',
     time: '11:00 AM',
-    format: 'IMAX 3D',
-    prices: { regular: 350, executive: 500, vip: 800 },
+    format: '2D',
+    prices: { regular: 350, executive: 350, vip: 350 },
     bookedSeatIds: ['A3', 'A4', 'C6', 'C7', 'D8', 'E5', 'E6', 'G1', 'G2'],
     blockedSeatIds: ['A1', 'A2']
   },
@@ -324,11 +324,11 @@ export const INITIAL_SHOWTIMES: Showtime[] = [
     id: 's-102',
     movieId: 'm-1',
     hallId: 'hall-1',
-    hallName: 'Hall 1 - IMAX 3D Laser',
+    hallName: 'Hall 1',
     date: '2026-07-23',
     time: '02:30 PM',
-    format: 'IMAX 3D',
-    prices: { regular: 350, executive: 500, vip: 800 },
+    format: '2D',
+    prices: { regular: 350, executive: 350, vip: 350 },
     bookedSeatIds: ['B1', 'B2', 'B3', 'D4', 'D5', 'G5'],
     blockedSeatIds: []
   },
@@ -336,11 +336,11 @@ export const INITIAL_SHOWTIMES: Showtime[] = [
     id: 's-103',
     movieId: 'm-1',
     hallId: 'hall-1',
-    hallName: 'Hall 1 - IMAX 3D Laser',
+    hallName: 'Hall 1',
     date: '2026-07-23',
     time: '06:00 PM',
-    format: 'IMAX 3D',
-    prices: { regular: 400, executive: 550, vip: 900 },
+    format: '2D',
+    prices: { regular: 350, executive: 350, vip: 350 },
     bookedSeatIds: ['C1', 'C2', 'D1', 'D2', 'D3', 'E4', 'F5', 'G3', 'G4', 'G5', 'G6'],
     blockedSeatIds: []
   },
@@ -348,37 +348,87 @@ export const INITIAL_SHOWTIMES: Showtime[] = [
     id: 's-104',
     movieId: 'm-1',
     hallId: 'hall-1',
-    hallName: 'Hall 1 - IMAX 3D Laser',
+    hallName: 'Hall 1',
     date: '2026-07-23',
     time: '09:15 PM',
-    format: 'IMAX 3D',
-    prices: { regular: 350, executive: 500, vip: 800 },
+    format: '2D',
+    prices: { regular: 350, executive: 350, vip: 350 },
     bookedSeatIds: ['E1', 'E2'],
     blockedSeatIds: []
   },
-  // Dune: Part Two (m-2)
+  // Dune: Part Two (m-6)
   {
     id: 's-201',
-    movieId: 'm-2',
+    movieId: 'm-6',
     hallId: 'hall-1',
-    hallName: 'Hall 1 - IMAX 3D Laser',
+    hallName: 'Hall 1',
     date: '2026-07-23',
     time: '01:00 PM',
-    format: 'IMAX 3D',
-    prices: { regular: 400, executive: 550, vip: 850 },
+    format: '3D',
+    prices: { regular: 350, executive: 350, vip: 350 },
     bookedSeatIds: ['C3', 'C4', 'D6', 'G7'],
     blockedSeatIds: []
   },
   {
     id: 's-202',
-    movieId: 'm-2',
+    movieId: 'm-6',
     hallId: 'hall-1',
-    hallName: 'Hall 1 - IMAX 3D Laser',
+    hallName: 'Hall 1',
     date: '2026-07-23',
     time: '07:30 PM',
-    format: 'IMAX 3D',
-    prices: { regular: 400, executive: 550, vip: 850 },
+    format: '3D',
+    prices: { regular: 350, executive: 350, vip: 350 },
     bookedSeatIds: ['D2', 'D3', 'D4', 'E5', 'E6', 'F7', 'G1'],
+    blockedSeatIds: []
+  },
+  // Stree 2 (m-5)
+  {
+    id: 's-501',
+    movieId: 'm-5',
+    hallId: 'hall-2',
+    hallName: 'Hall 2',
+    date: '2026-07-23',
+    time: '03:15 PM',
+    format: '2D',
+    prices: { regular: 350, executive: 350, vip: 350 },
+    bookedSeatIds: ['A1', 'A2', 'B5'],
+    blockedSeatIds: []
+  },
+  {
+    id: 's-502',
+    movieId: 'm-5',
+    hallId: 'hall-2',
+    hallName: 'Hall 2',
+    date: '2026-07-23',
+    time: '08:45 PM',
+    format: '2D',
+    prices: { regular: 350, executive: 350, vip: 350 },
+    bookedSeatIds: ['C5', 'C6'],
+    blockedSeatIds: []
+  },
+  // Deadpool & Wolverine (m-7)
+  {
+    id: 's-701',
+    movieId: 'm-7',
+    hallId: 'hall-1',
+    hallName: 'Hall 1',
+    date: '2026-07-23',
+    time: '04:30 PM',
+    format: '3D',
+    prices: { regular: 350, executive: 350, vip: 350 },
+    bookedSeatIds: ['D1', 'D2', 'E3'],
+    blockedSeatIds: []
+  },
+  {
+    id: 's-702',
+    movieId: 'm-7',
+    hallId: 'hall-1',
+    hallName: 'Hall 1',
+    date: '2026-07-23',
+    time: '09:45 PM',
+    format: '3D',
+    prices: { regular: 350, executive: 350, vip: 350 },
+    bookedSeatIds: ['F1', 'F2'],
     blockedSeatIds: []
   },
   // Kabbadi 5 (m-3)
@@ -386,11 +436,11 @@ export const INITIAL_SHOWTIMES: Showtime[] = [
     id: 's-301',
     movieId: 'm-3',
     hallId: 'hall-2',
-    hallName: 'Hall 2 - Gajuri Dolby Atmos',
+    hallName: 'Hall 2',
     date: '2026-07-23',
     time: '11:30 AM',
-    format: 'Dolby Atmos',
-    prices: { regular: 300, executive: 450, vip: 700 },
+    format: '2D',
+    prices: { regular: 350, executive: 350, vip: 350 },
     bookedSeatIds: ['A5', 'A6', 'B7', 'B8'],
     blockedSeatIds: []
   },
@@ -398,11 +448,11 @@ export const INITIAL_SHOWTIMES: Showtime[] = [
     id: 's-302',
     movieId: 'm-3',
     hallId: 'hall-2',
-    hallName: 'Hall 2 - Gajuri Dolby Atmos',
+    hallName: 'Hall 2',
     date: '2026-07-23',
     time: '05:30 PM',
-    format: 'Dolby Atmos',
-    prices: { regular: 350, executive: 500, vip: 750 },
+    format: '2D',
+    prices: { regular: 350, executive: 350, vip: 350 },
     bookedSeatIds: ['C1', 'C2', 'C3', 'D4', 'E1'],
     blockedSeatIds: []
   },
@@ -411,11 +461,11 @@ export const INITIAL_SHOWTIMES: Showtime[] = [
     id: 's-105',
     movieId: 'm-1',
     hallId: 'hall-1',
-    hallName: 'Hall 1 - IMAX 3D Laser',
+    hallName: 'Hall 1',
     date: '2026-07-24',
     time: '02:30 PM',
-    format: 'IMAX 3D',
-    prices: { regular: 350, executive: 500, vip: 800 },
+    format: '2D',
+    prices: { regular: 350, executive: 350, vip: 350 },
     bookedSeatIds: ['B3', 'B4'],
     blockedSeatIds: []
   }
@@ -450,7 +500,7 @@ export const FOOD_ITEMS: FoodItem[] = [
   },
   {
     id: 'f-4',
-    name: 'Gajuri IMAX Combo Deal',
+    name: 'Gajuri Cinema Combo Deal',
     category: 'Combos',
     price: 480,
     image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=400',
@@ -492,10 +542,10 @@ export const INITIAL_BOOKINGS: Booking[] = [
     movieTitle: 'Purna Bahadur Ko Sarangi',
     moviePoster: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=800',
     showtimeId: 's-101',
-    hallName: 'Hall 1 - IMAX 3D Laser',
+    hallName: 'Hall 1',
     date: '2026-07-23',
     time: '11:00 AM',
-    format: 'IMAX 3D',
+    format: '2D',
     seatIds: ['E5', 'E6'],
     seatsDescription: 'Executive Row E (E5, E6)',
     snacks: [
@@ -521,10 +571,10 @@ export const INITIAL_BOOKINGS: Booking[] = [
     movieTitle: 'Purna Bahadur Ko Sarangi',
     moviePoster: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&q=80&w=800',
     showtimeId: 's-101',
-    hallName: 'Hall 1 - IMAX 3D Laser',
+    hallName: 'Hall 1',
     date: '2026-07-23',
     time: '11:00 AM',
-    format: 'IMAX 3D',
+    format: '2D',
     seatIds: ['C6', 'C7'],
     seatsDescription: 'Regular Row C (C6, C7)',
     snacks: [],
@@ -550,10 +600,10 @@ export const INITIAL_BOOKINGS: Booking[] = [
     movieTitle: 'Mahajatra',
     moviePoster: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&q=80&w=800',
     showtimeId: 's-201',
-    hallName: 'Hall 2 - Gajuri Dolby Atmos',
+    hallName: 'Hall 2',
     date: '2026-07-23',
     time: '01:00 PM',
-    format: 'Dolby Atmos',
+    format: '2D',
     seatIds: ['C3', 'C4'],
     seatsDescription: 'Executive Row C (C3, C4)',
     snacks: [
@@ -578,14 +628,14 @@ export const INITIAL_BOOKINGS: Booking[] = [
     movieTitle: 'Dune: Part Two',
     moviePoster: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=800',
     showtimeId: 's-202',
-    hallName: 'Hall 1 - IMAX 3D Laser',
+    hallName: 'Hall 1',
     date: '2026-07-23',
     time: '07:30 PM',
-    format: 'IMAX 3D',
+    format: '3D',
     seatIds: ['G1', 'G2'],
     seatsDescription: 'VIP Row G (G1, G2)',
     snacks: [
-      { foodId: 'f-4', name: 'Gajuri IMAX Combo Deal', quantity: 1, price: 480 }
+      { foodId: 'f-4', name: 'Gajuri Cinema Combo Deal', quantity: 1, price: 480 }
     ],
     ticketTotal: 1700,
     snackTotal: 480,
@@ -608,15 +658,8 @@ export function generateHall1Seats(): Seat[] {
   const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
   
   rows.forEach((row) => {
-    let type: 'regular' | 'executive' | 'vip' = 'regular';
-    let price = 350;
-    if (['D', 'E', 'F'].includes(row)) {
-      type = 'executive';
-      price = 500;
-    } else if (row === 'G') {
-      type = 'vip';
-      price = 800;
-    }
+    const type = 'regular';
+    const price = 350;
 
     for (let num = 1; num <= 12; num++) {
       const id = `${row}${num}`;

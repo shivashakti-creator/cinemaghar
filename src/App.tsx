@@ -1,5 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CinemaProvider, useCinema } from './context/CinemaContext';
+import { ThemeProvider } from './providers/ThemeProvider';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { ToastContainer } from './components/ToastContainer';
@@ -8,6 +10,9 @@ import { SeatSelectionGrid } from './components/SeatSelectionGrid';
 import { SnacksSelector } from './components/SnacksSelector';
 import { PaymentModal } from './components/PaymentModal';
 import { TicketSuccessModal } from './components/TicketSuccessModal';
+import { PaymentProcessingView } from './components/PaymentProcessingView';
+import { PaymentSuccessView } from './components/PaymentSuccessView';
+import { PaymentFailedView } from './components/PaymentFailedView';
 import { HomeView } from './views/HomeView';
 import { MoviesView } from './views/MoviesView';
 import { ShowtimesView } from './views/ShowtimesView';
@@ -15,17 +20,27 @@ import { CustomerAccountView } from './views/CustomerAccountView';
 import { AdminDashboardView } from './views/AdminDashboardView';
 import { AdminLoginView } from './views/AdminLoginView';
 import { StaffView } from './views/StaffView';
+import { AdminLogin } from './pages/AdminLogin';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { ProtectedAdminRoute } from './components/admin/ProtectedAdminRoute';
 
-const MainContent: React.FC = () => {
-  const { activeTab, setActiveTab, setStaffSubTab, activeStep, isAdmin } = useCinema();
+const MainAppLayout: React.FC = () => {
+  const { activeTab, setActiveTab, setStaffSubTab, activeStep, setActiveStep } = useCinema();
+  const [paymentViewMode, setPaymentViewMode] = useState<'none' | 'verifying' | 'success' | 'failed'>('none');
+  const [verifiedRef, setVerifiedRef] = useState('');
+  const [verifyError, setVerifyError] = useState('');
 
-  // URL Hash/Path routing synchronization
   useEffect(() => {
     const handleUrlRoute = () => {
       const pathname = window.location.pathname.toLowerCase();
       const hash = window.location.hash.toLowerCase();
+      const search = window.location.search;
+      const urlParams = new URLSearchParams(search);
 
-      if (pathname.startsWith('/staff') || hash.includes('staff')) {
+      // Check if arriving from gateway redirect
+      if (urlParams.has('gateway') || urlParams.has('pidx') || urlParams.has('PRN') || urlParams.has('data')) {
+        setPaymentViewMode('verifying');
+      } else if (pathname.startsWith('/staff') || hash.includes('staff')) {
         setActiveTab('staff');
         if (pathname.includes('/scanner') || hash.includes('scanner')) {
           setStaffSubTab('scanner');
@@ -46,21 +61,62 @@ const MainContent: React.FC = () => {
     return () => window.removeEventListener('popstate', handleUrlRoute);
   }, [setActiveTab, setStaffSubTab]);
 
-  // If user is currently inside an active booking flow step
-  if (activeStep === 'seats') {
-    return <SeatSelectionGrid />;
-  }
-  if (activeStep === 'snacks') {
-    return <SnacksSelector />;
-  }
-  if (activeStep === 'payment') {
-    return <PaymentModal />;
-  }
-  if (activeStep === 'ticket') {
-    return <TicketSuccessModal />;
+  if (paymentViewMode === 'verifying') {
+    return (
+      <PaymentProcessingView
+        onSuccess={(bookingRef) => {
+          setVerifiedRef(bookingRef);
+          setPaymentViewMode('success');
+        }}
+        onFailed={(err) => {
+          setVerifyError(err);
+          setPaymentViewMode('failed');
+        }}
+      />
+    );
   }
 
-  // Otherwise render primary views based on tab
+  if (paymentViewMode === 'success') {
+    return (
+      <PaymentSuccessView
+        bookingRef={verifiedRef || 'GAJ-8921K'}
+        onReturnHome={() => {
+          setPaymentViewMode('none');
+          setActiveStep('movie');
+          setActiveTab('home');
+          window.history.replaceState({}, '', '/');
+        }}
+      />
+    );
+  }
+
+  if (paymentViewMode === 'failed') {
+    return (
+      <PaymentFailedView
+        errorMessage={verifyError}
+        onRetry={() => {
+          setPaymentViewMode('none');
+          setActiveStep('payment');
+        }}
+        onChangeGateway={() => {
+          setPaymentViewMode('none');
+          setActiveStep('payment');
+        }}
+        onReturnHome={() => {
+          setPaymentViewMode('none');
+          setActiveStep('movie');
+          setActiveTab('home');
+          window.history.replaceState({}, '', '/');
+        }}
+      />
+    );
+  }
+
+  if (activeStep === 'seats') return <SeatSelectionGrid />;
+  if (activeStep === 'snacks') return <SnacksSelector />;
+  if (activeStep === 'payment') return <PaymentModal />;
+  if (activeStep === 'ticket') return <TicketSuccessModal />;
+
   switch (activeTab) {
     case 'movies':
       return <MoviesView />;
@@ -69,7 +125,7 @@ const MainContent: React.FC = () => {
     case 'account':
       return <CustomerAccountView />;
     case 'admin':
-      return isAdmin ? <AdminDashboardView /> : <AdminLoginView />;
+      return <AdminDashboardView />;
     case 'staff':
       return <StaffView />;
     case 'home':
@@ -81,24 +137,37 @@ const MainContent: React.FC = () => {
 export default function App() {
   return (
     <CinemaProvider>
-      <div className="min-h-screen bg-[#090A0E] text-slate-100 flex flex-col font-sans selection:bg-[#D4AF37] selection:text-black">
-        {/* Navigation Header */}
-        <Header />
+      <ThemeProvider>
+        <BrowserRouter>
+          <div className="min-h-screen bg-[#090A0E] dark:bg-[#090A0E] light:bg-slate-50 text-slate-100 dark:text-slate-100 light:text-slate-900 flex flex-col font-sans selection:bg-[#D4AF37] selection:text-black">
+            <Header />
 
-        {/* Dynamic Main Body */}
-        <main className="flex-1">
-          <MainContent />
-        </main>
+            <main className="flex-1">
+              <Routes>
+                {/* Route /admin/login -> AdminLogin */}
+                <Route path="/admin/login" element={<AdminLogin onSuccess={() => { window.location.href = '/admin'; }} />} />
 
-        {/* Global Trailer Video Modal */}
-        <TrailerModal />
+                {/* Route /admin -> ProtectedAdminRoute -> AdminDashboard */}
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedAdminRoute onRedirectToLogin={() => { window.location.href = '/admin/login'; }}>
+                      <AdminDashboard />
+                    </ProtectedAdminRoute>
+                  }
+                />
 
-        {/* Floating Toast Feedback Notifications */}
-        <ToastContainer />
+                {/* Catch-all app route */}
+                <Route path="*" element={<MainAppLayout />} />
+              </Routes>
+            </main>
 
-        {/* Footer */}
-        <Footer />
-      </div>
+            <TrailerModal />
+            <ToastContainer />
+            <Footer />
+          </div>
+        </BrowserRouter>
+      </ThemeProvider>
     </CinemaProvider>
   );
 }

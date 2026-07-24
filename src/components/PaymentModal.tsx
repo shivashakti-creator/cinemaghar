@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useCinema } from '../context/CinemaContext';
-import { PaymentMethod } from '../types';
-import { ShieldCheck, Lock, CreditCard, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
+import { PaymentGateway } from '../types/payment';
+import { ShieldCheck, Lock, CreditCard, ArrowLeft, Loader2, CheckCircle2, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { generateHall1Seats } from '../data/mockData';
+import { SeatReservationTimer } from './SeatReservationTimer';
 
 export const PaymentModal: React.FC = () => {
   const {
@@ -10,18 +11,18 @@ export const PaymentModal: React.FC = () => {
     bookingShowtime,
     selectedSeats,
     selectedSnacks,
-    completePayment,
     user,
-    cancelBookingFlow
+    cancelBookingFlow,
+    showToast,
+    setBookingStep
   } = useCinema();
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('eSewa');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentGateway>('esewa');
   const [customerName, setCustomerName] = useState(user.name);
   const [customerEmail, setCustomerEmail] = useState(user.email);
   const [customerPhone, setCustomerPhone] = useState(user.phone);
-  const [esewaMobile, setEsewaMobile] = useState(user.phone);
-  const [pinInput, setPinInput] = useState('1234');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!bookingMovie || !bookingShowtime) return null;
 
@@ -35,24 +36,98 @@ export const PaymentModal: React.FC = () => {
 
   const snackTotal = selectedSnacks.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const subtotal = ticketTotal + snackTotal;
-  const vatAmount = Math.round(subtotal * 0.13); // 13% VAT
+  const vatAmount = Math.round(subtotal * 0.13); // 13% Cinema Tax & VAT
   const grandTotal = subtotal + vatAmount;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
+    setErrorMessage(null);
 
     try {
-      // Simulate gateway delay
-      await new Promise((resolve) => setTimeout(resolve, 1800));
-      await completePayment(paymentMethod, {
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone
+      const payload = {
+        movieId: bookingMovie.id,
+        movieTitle: bookingMovie.title,
+        moviePoster: bookingMovie.poster,
+        showId: bookingShowtime.id,
+        hallName: bookingShowtime.hallName,
+        showDate: bookingShowtime.date,
+        showTime: bookingShowtime.time,
+        format: bookingShowtime.format || '2D',
+        selectedSeats,
+        selectedSnacks,
+        ticketTotal,
+        snackTotal,
+        totalAmount: grandTotal,
+        paymentMethod,
+        customerName,
+        customerEmail,
+        customerPhone
+      };
+
+      // Call Backend Server Initiate API
+      const res = await fetch('/api/payments/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-    } catch (err) {
-      console.error(err);
-    } finally {
+
+      const data = await res.json();
+
+      if (!data.success) {
+        setErrorMessage(data.error || 'Failed to initiate payment.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // If Payment Method is Khalti with redirect URL
+      if (paymentMethod === 'khalti' && data.paymentUrl) {
+        showToast('Redirecting to Khalti Secure Checkout...', 'info');
+        setTimeout(() => {
+          window.location.href = data.paymentUrl;
+        }, 1000);
+        return;
+      }
+
+      // If Payment Method is eSewa or Fonepay with HTML Form Payload
+      if ((paymentMethod === 'esewa' || paymentMethod === 'fonepay') && data.gatewayData) {
+        showToast(`Redirecting to ${paymentMethod.toUpperCase()} Gateway...`, 'info');
+        
+        // Dynamically create and submit HTML form
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = data.gatewayData.action;
+
+        Object.entries(data.gatewayData).forEach(([key, value]) => {
+          if (key !== 'action') {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = value as string;
+            form.appendChild(input);
+          }
+        });
+
+        document.body.appendChild(form);
+        setTimeout(() => {
+          form.submit();
+        }, 1200);
+        return;
+      }
+
+      // If Counter / Direct Confirmation
+      if (paymentMethod === 'counter') {
+        showToast('Ticket reserved for cinema counter payment!', 'success');
+        window.location.href = `/booking/success?ref=${data.bookingReference}`;
+        return;
+      }
+
+      // Fallback
+      window.location.href = `/booking/success?ref=${data.bookingReference}`;
+
+    } catch (err: any) {
+      console.error('Payment submit error:', err);
+      setErrorMessage(err?.message || 'Server connection error during payment initiation.');
       setIsProcessing(false);
     }
   };
@@ -61,29 +136,44 @@ export const PaymentModal: React.FC = () => {
     <div className="w-full max-w-4xl mx-auto bg-[#090A0E] border border-[#D4AF37]/40 rounded-3xl p-4 sm:p-8 shadow-[0_0_60px_rgba(212,175,55,0.2)] my-6">
       
       {/* Top Bar */}
-      <div className="flex items-center justify-between pb-6 border-b border-white/10">
+      <div className="flex flex-wrap items-center justify-between pb-6 border-b border-white/10 gap-3">
         <button
           id="payment-back-btn"
           onClick={cancelBookingFlow}
-          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+          className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Cancel</span>
+          <span>Cancel & Return</span>
         </button>
 
-        <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold bg-emerald-950/60 border border-emerald-500/30 px-3 py-1 rounded-full">
+        <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold bg-emerald-950/60 border border-emerald-500/30 px-3.5 py-1.5 rounded-full">
           <ShieldCheck className="w-4 h-4" />
-          <span>Nepal Direct Gateway SSL Encrypted</span>
+          <span>Nepal Payment Gateway SSL Encrypted</span>
         </div>
       </div>
 
+      {/* 10-Minute Seat Reservation Countdown Banner */}
+      <div className="my-6">
+        <SeatReservationTimer onExpire={() => {
+          showToast('10-minute seat reservation expired. Please re-select your seats.', 'error');
+          setBookingStep('seats');
+        }} />
+      </div>
+
+      {errorMessage && (
+        <div className="mb-6 p-4 rounded-2xl bg-rose-950/60 border border-rose-500/40 text-rose-200 text-xs flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+          <p className="flex-1 font-medium">{errorMessage}</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 my-6">
         
-        {/* Left Column: Customer Details & Payment Gateways */}
+        {/* Left Column: Customer Details & Gateway Selection */}
         <div className="lg:col-span-7 space-y-6">
           <div>
-            <h3 className="text-xl font-bold font-serif text-white">Contact & Ticket Details</h3>
-            <p className="text-xs text-slate-400 mt-1">E-Ticket QR code will be sent to this email & mobile.</p>
+            <h3 className="text-xl font-bold font-serif text-white">Contact & E-Ticket Details</h3>
+            <p className="text-xs text-slate-400 mt-1">E-Ticket QR code & invoice will be issued to this contact.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -122,134 +212,144 @@ export const PaymentModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Payment Method Selector */}
+          {/* Gateway Selector Cards */}
           <div>
-            <h4 className="text-sm font-bold text-white mb-3">Select Payment Method (Nepal)</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-bold text-white">Select Official Payment Gateway</h4>
+              <span className="text-[10px] text-[#D4AF37] font-semibold flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                <span>Modular API Integration</span>
+              </span>
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               
               {/* eSewa */}
               <button
                 type="button"
                 id="pay-method-esewa"
-                onClick={() => setPaymentMethod('eSewa')}
-                className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 ${
-                  paymentMethod === 'eSewa'
-                    ? 'bg-[#60BB46]/20 border-[#60BB46] shadow-[0_0_15px_rgba(96,187,70,0.4)]'
-                    : 'bg-[#12131C] border-white/10 hover:border-white/20'
+                onClick={() => setPaymentMethod('esewa')}
+                className={`p-3.5 rounded-2xl border transition-all flex flex-col items-center justify-center gap-2 cursor-pointer ${
+                  paymentMethod === 'esewa'
+                    ? 'bg-[#60BB46]/20 border-[#60BB46] shadow-[0_0_20px_rgba(96,187,70,0.4)] scale-105'
+                    : 'bg-[#12131C] border-white/10 hover:border-white/20 opacity-80'
                 }`}
               >
-                <div className="w-8 h-8 rounded-lg bg-[#60BB46] text-white font-black text-xs flex items-center justify-center shadow">
+                <div className="w-10 h-10 rounded-xl bg-[#60BB46] text-white font-black text-sm flex items-center justify-center shadow-lg">
                   eS
                 </div>
-                <span className="text-xs font-bold text-white">eSewa</span>
+                <div className="text-center">
+                  <span className="text-xs font-bold text-white block">eSewa</span>
+                  <span className="text-[9px] text-emerald-400 font-mono">ePay v2 HMAC</span>
+                </div>
               </button>
 
               {/* Khalti */}
               <button
                 type="button"
                 id="pay-method-khalti"
-                onClick={() => setPaymentMethod('Khalti')}
-                className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 ${
-                  paymentMethod === 'Khalti'
-                    ? 'bg-[#5C2D91]/20 border-[#5C2D91] shadow-[0_0_15px_rgba(92,45,145,0.4)]'
-                    : 'bg-[#12131C] border-white/10 hover:border-white/20'
+                onClick={() => setPaymentMethod('khalti')}
+                className={`p-3.5 rounded-2xl border transition-all flex flex-col items-center justify-center gap-2 cursor-pointer ${
+                  paymentMethod === 'khalti'
+                    ? 'bg-[#5C2D91]/20 border-[#5C2D91] shadow-[0_0_20px_rgba(92,45,145,0.4)] scale-105'
+                    : 'bg-[#12131C] border-white/10 hover:border-white/20 opacity-80'
                 }`}
               >
-                <div className="w-8 h-8 rounded-lg bg-[#5C2D91] text-white font-black text-xs flex items-center justify-center shadow">
+                <div className="w-10 h-10 rounded-xl bg-[#5C2D91] text-white font-black text-sm flex items-center justify-center shadow-lg">
                   K
                 </div>
-                <span className="text-xs font-bold text-white">Khalti</span>
+                <div className="text-center">
+                  <span className="text-xs font-bold text-white block">Khalti</span>
+                  <span className="text-[9px] text-purple-400 font-mono">ePayment v2</span>
+                </div>
               </button>
 
-              {/* IME Pay */}
+              {/* Fonepay */}
               <button
                 type="button"
-                id="pay-method-imepay"
-                onClick={() => setPaymentMethod('IME Pay')}
-                className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 ${
-                  paymentMethod === 'IME Pay'
-                    ? 'bg-[#ED1C24]/20 border-[#ED1C24] shadow-[0_0_15px_rgba(237,28,36,0.4)]'
-                    : 'bg-[#12131C] border-white/10 hover:border-white/20'
+                id="pay-method-fonepay"
+                onClick={() => setPaymentMethod('fonepay')}
+                className={`p-3.5 rounded-2xl border transition-all flex flex-col items-center justify-center gap-2 cursor-pointer ${
+                  paymentMethod === 'fonepay'
+                    ? 'bg-[#ED1C24]/20 border-[#ED1C24] shadow-[0_0_20px_rgba(237,28,36,0.4)] scale-105'
+                    : 'bg-[#12131C] border-white/10 hover:border-white/20 opacity-80'
                 }`}
               >
-                <div className="w-8 h-8 rounded-lg bg-[#ED1C24] text-white font-black text-xs flex items-center justify-center shadow">
-                  IME
+                <div className="w-10 h-10 rounded-xl bg-[#ED1C24] text-white font-black text-sm flex items-center justify-center shadow-lg">
+                  FP
                 </div>
-                <span className="text-xs font-bold text-white">IME Pay</span>
+                <div className="text-center">
+                  <span className="text-xs font-bold text-white block">Fonepay</span>
+                  <span className="text-[9px] text-rose-400 font-mono">QR / Web Pay</span>
+                </div>
               </button>
 
-              {/* Counter / Card */}
+              {/* Counter / Cash */}
               <button
                 type="button"
-                id="pay-method-card"
-                onClick={() => setPaymentMethod('Counter')}
-                className={`p-3 rounded-2xl border transition-all flex flex-col items-center justify-center gap-1.5 ${
-                  paymentMethod === 'Counter'
-                    ? 'bg-[#D4AF37]/20 border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.4)]'
-                    : 'bg-[#12131C] border-white/10 hover:border-white/20'
+                id="pay-method-counter"
+                onClick={() => setPaymentMethod('counter')}
+                className={`p-3.5 rounded-2xl border transition-all flex flex-col items-center justify-center gap-2 cursor-pointer ${
+                  paymentMethod === 'counter'
+                    ? 'bg-[#D4AF37]/20 border-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.4)] scale-105'
+                    : 'bg-[#12131C] border-white/10 hover:border-white/20 opacity-80'
                 }`}
               >
-                <div className="w-8 h-8 rounded-lg bg-[#D4AF37] text-black font-black text-xs flex items-center justify-center shadow">
-                  <CreditCard className="w-4 h-4" />
+                <div className="w-10 h-10 rounded-xl bg-[#D4AF37] text-black font-black text-sm flex items-center justify-center shadow-lg">
+                  <CreditCard className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-bold text-white">Counter / Card</span>
+                <div className="text-center">
+                  <span className="text-xs font-bold text-white block">Counter</span>
+                  <span className="text-[9px] text-amber-300 font-mono">Pay at Cinema</span>
+                </div>
               </button>
 
             </div>
           </div>
 
-          {/* Wallet Verification Input Mock */}
-          <form onSubmit={handleSubmit} className="bg-[#12131C] p-4 rounded-2xl border border-white/10 space-y-4">
+          {/* Gateway Action Box */}
+          <form onSubmit={handleSubmit} className="bg-[#12131C] p-5 rounded-2xl border border-white/10 space-y-4">
             <div className="flex items-center justify-between text-xs font-bold text-[#D4AF37]">
-              <span>{paymentMethod} Gateway Authentication</span>
+              <span className="uppercase">{paymentMethod} Merchant Verification</span>
               <Lock className="w-3.5 h-3.5" />
             </div>
 
-            {paymentMethod !== 'Counter' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">
-                    {paymentMethod} Mobile Number
-                  </label>
-                  <input
-                    id="wallet-mobile-input"
-                    type="text"
-                    value={esewaMobile}
-                    onChange={(e) => setEsewaMobile(e.target.value)}
-                    required
-                    placeholder="98XXXXXXXX"
-                    className="w-full bg-[#1A1B28] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-400 mb-1">{paymentMethod} MPIN</label>
-                  <input
-                    id="wallet-mpin-input"
-                    type="password"
-                    value={pinInput}
-                    onChange={(e) => setPinInput(e.target.value)}
-                    required
-                    maxLength={6}
-                    className="w-full bg-[#1A1B28] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                  />
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-slate-300">
-                You will receive a reserved ticket pass. Please present this QR code at Gajuri Cinemas ticket booth to pay cash/card before showtime.
-              </p>
-            )}
+            <div className="p-3.5 bg-[#1A1B28] rounded-xl border border-white/5 text-xs text-slate-300 space-y-1.5">
+              {paymentMethod === 'esewa' && (
+                <p>
+                  You will be securely redirected to official <strong className="text-emerald-400">eSewa ePay Portal</strong>.
+                  Upon completing payment on eSewa, you will be redirected back and your booking will be verified server-side.
+                </p>
+              )}
+              {paymentMethod === 'khalti' && (
+                <p>
+                  You will be redirected to official <strong className="text-purple-400">Khalti Gateway</strong>.
+                  Our server will perform cryptographic lookup verification using Khalti Secret Key before issuing your ticket.
+                </p>
+              )}
+              {paymentMethod === 'fonepay' && (
+                <p>
+                  You will be redirected to official <strong className="text-rose-400">Fonepay Gateway</strong>.
+                  Transactions are signed using SHA512 Data Verification (DV) algorithm.
+                </p>
+              )}
+              {paymentMethod === 'counter' && (
+                <p>
+                  Your seats will be reserved for counter pickup. Please present your booking code at Gajuri Cinema ticket box 20 minutes before showtime to pay via Cash/Card.
+                </p>
+              )}
+            </div>
 
             <button
               id="confirm-pay-btn"
               type="submit"
               disabled={isProcessing}
-              className={`w-full py-3.5 rounded-xl font-bold text-sm tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg ${
-                paymentMethod === 'eSewa'
+              className={`w-full py-4 rounded-2xl font-bold text-sm tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl cursor-pointer ${
+                paymentMethod === 'esewa'
                   ? 'bg-[#60BB46] hover:bg-emerald-500 text-white'
-                  : paymentMethod === 'Khalti'
+                  : paymentMethod === 'khalti'
                   ? 'bg-[#5C2D91] hover:bg-purple-700 text-white'
-                  : paymentMethod === 'IME Pay'
+                  : paymentMethod === 'fonepay'
                   ? 'bg-[#ED1C24] hover:bg-red-600 text-white'
                   : 'bg-[#D4AF37] hover:bg-amber-400 text-black'
               }`}
@@ -257,7 +357,7 @@ export const PaymentModal: React.FC = () => {
               {isProcessing ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>COMMUNICATING WITH {paymentMethod.toUpperCase()}...</span>
+                  <span>COMMUNICATING WITH {paymentMethod.toUpperCase()} GATEWAY...</span>
                 </>
               ) : (
                 <>
@@ -274,7 +374,7 @@ export const PaymentModal: React.FC = () => {
         <div className="lg:col-span-5 bg-[#12131C] p-6 rounded-3xl border border-[#D4AF37]/30 flex flex-col justify-between space-y-6">
           <div>
             <h3 className="text-lg font-bold font-serif text-white border-b border-white/10 pb-3">
-              Booking Summary
+              Order Breakdown
             </h3>
 
             <div className="flex gap-4 my-4">
@@ -285,7 +385,6 @@ export const PaymentModal: React.FC = () => {
               />
               <div>
                 <h4 className="text-sm font-bold text-white font-serif">{bookingMovie.title}</h4>
-                <p className="text-xs text-amber-200 mt-0.5">{bookingShowtime.hallName}</p>
                 <p className="text-xs text-slate-400 mt-1">
                   {bookingShowtime.date} @ <span className="text-[#D4AF37] font-semibold">{bookingShowtime.time}</span>
                 </p>
@@ -296,21 +395,21 @@ export const PaymentModal: React.FC = () => {
             </div>
 
             {/* Line items */}
-            <div className="space-y-2 text-xs text-slate-300 pt-3 border-t border-white/10">
+            <div className="space-y-2.5 text-xs text-slate-300 pt-3 border-t border-white/10">
               <div className="flex justify-between">
                 <span>Tickets ({selectedSeats.length} seats)</span>
-                <span>NPR {ticketTotal.toLocaleString()}</span>
+                <span className="font-semibold text-white">NPR {ticketTotal.toLocaleString()}</span>
               </div>
 
               {selectedSnacks.length > 0 && (
                 <div className="flex justify-between text-amber-200">
                   <span>Concession Snacks ({selectedSnacks.length} items)</span>
-                  <span>NPR {snackTotal.toLocaleString()}</span>
+                  <span className="font-semibold">NPR {snackTotal.toLocaleString()}</span>
                 </div>
               )}
 
               <div className="flex justify-between text-slate-400">
-                <span>13% Cinema VAT & Local Govt Tax</span>
+                <span>13% Cinema VAT & Govt Tax</span>
                 <span>NPR {vatAmount.toLocaleString()}</span>
               </div>
             </div>
@@ -323,7 +422,9 @@ export const PaymentModal: React.FC = () => {
                 NPR {grandTotal.toLocaleString()}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500">Includes all taxes. Instant QR ticket will be issued upon authorization.</p>
+            <p className="text-[11px] text-slate-500">
+              Booking confirmed ONLY after server signature verification.
+            </p>
           </div>
         </div>
 

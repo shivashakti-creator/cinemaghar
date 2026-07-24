@@ -78,15 +78,11 @@ export const Footer: React.FC = () => {
           <ul className="space-y-2.5 text-xs">
             <li className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
-              <span>Hall 1: IMAX 3D Laser & Dolby Atmos</span>
+              <span>Hall 2: Gajuri Club Dolby Atmos 7.1 with high contrast and sharp 2D/3D imagery.</span>
             </li>
             <li className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
-              <span>Hall 2: Gajuri Club Dolby Atmos 7.1</span>
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
-              <span>VIP Recliner Row with In-Seat Dining</span>
+              <span>Playground for Kids, greenery surrounding</span>
             </li>
             <li className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />

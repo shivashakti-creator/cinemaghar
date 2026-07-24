@@ -140,11 +140,12 @@ export const HomeView: React.FC = () => {
 
                 <div className="p-6 flex flex-col justify-between flex-1 space-y-4">
                   <div>
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    <div className="flex flex-wrap items-center gap-2 mb-2 text-xs font-bold">
+                      <span className="text-amber-300">
                         RELEASING: {movie.releaseDate}
                       </span>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/10 text-white">
+                      <span className="text-slate-500">•</span>
+                      <span className="text-white">
                         {movie.industry}
                       </span>
                     </div>

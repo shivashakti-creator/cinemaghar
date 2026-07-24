@@ -99,7 +99,6 @@ export const TicketSuccessModal: React.FC = () => {
 
             <div>
               <h3 className="text-2xl font-bold font-serif text-white">{confirmedBooking.movieTitle}</h3>
-              <p className="text-xs text-[#D4AF37] font-semibold mt-0.5">{confirmedBooking.hallName} • {confirmedBooking.format}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-2 text-xs text-slate-300 border-t border-white/10">

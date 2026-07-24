@@ -47,25 +47,6 @@ export const HeroCarousel: React.FC = () => {
           {/* Banner Content Container */}
           <div className="relative max-w-7xl mx-auto h-full px-4 sm:px-6 lg:px-8 flex flex-col justify-end pb-12 sm:pb-16 z-10">
             <div className="max-w-2xl space-y-4">
-              
-              {/* Badges */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#D4AF37] text-black shadow-[0_0_15px_rgba(212,175,55,0.4)] flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{activeMovie.hallType}</span>
-                </span>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/10 backdrop-blur-md text-amber-200 border border-white/10">
-                  {activeMovie.ageRating}
-                </span>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/10 backdrop-blur-md text-slate-200 border border-white/10 flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5 fill-[#D4AF37] text-[#D4AF37]" />
-                  <span>{activeMovie.rating} / 10 IMDb</span>
-                </span>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/10 backdrop-blur-md text-slate-300 border border-white/10 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{activeMovie.duration}</span>
-                </span>
-              </div>
 
               {/* Title */}
               <div>
@@ -101,10 +82,9 @@ export const HeroCarousel: React.FC = () => {
                         key={st.id}
                         id={`hero-showtime-${st.id}`}
                         onClick={() => startBooking(activeMovie, st)}
-                        className="px-3 py-1.5 rounded-lg bg-[#1A1B28]/80 hover:bg-[#D4AF37] hover:text-black border border-[#D4AF37]/30 text-xs font-semibold text-slate-200 transition-all flex items-center gap-1.5 shadow-md"
+                        className="px-3.5 py-2 rounded-lg bg-[#1A1B28]/80 hover:bg-[#D4AF37] hover:text-black border border-[#D4AF37]/30 text-xs font-semibold text-slate-200 transition-all flex items-center justify-center shadow-md cursor-pointer"
                       >
                         <span>{st.time}</span>
-                        <span className="text-[10px] opacity-75">({st.format})</span>
                       </button>
                     ))}
                   </div>

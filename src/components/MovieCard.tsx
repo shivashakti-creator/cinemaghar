@@ -77,17 +77,6 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onSelect }) => {
           loading="lazy"
         />
 
-        {/* Top Badges Overlay */}
-        <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10">
-          <span className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-black/80 backdrop-blur-md border border-[#D4AF37]/40 text-[#D4AF37] shadow-lg">
-            {movie.hallType.includes('IMAX') ? 'IMAX 3D' : 'Dolby Atmos'}
-          </span>
-          <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-black/80 backdrop-blur-md border border-white/20 text-white flex items-center gap-1 shadow-lg">
-            <Star className="w-3 h-3 text-[#D4AF37] fill-[#D4AF37]" />
-            <span>{movie.rating}</span>
-          </span>
-        </div>
-
         {/* Play Trailer Hover Overlay */}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-4 gap-3 z-20 backdrop-blur-[2px]">
           <button

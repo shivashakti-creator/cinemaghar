@@ -74,13 +74,7 @@ export const SeatSelectionGrid: React.FC = () => {
         {/* Header bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black text-black bg-[#D4AF37] px-2.5 py-0.5 rounded shadow-[0_0_10px_#D4AF37]">
-                {bookingShowtime.format}
-              </span>
-              <span className="text-xs text-slate-300 font-semibold">{bookingShowtime.hallName}</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold font-serif text-white mt-1 tracking-wide">
+            <h2 className="text-2xl sm:text-3xl font-extrabold font-serif text-white tracking-wide">
               {bookingMovie.title}
             </h2>
             <p className="text-xs text-amber-200 mt-0.5 font-medium">
@@ -125,13 +119,6 @@ export const SeatSelectionGrid: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-t-md bg-purple-900/80 border border-purple-500/60 flex items-center justify-center shadow-[0_0_10px_rgba(168,85,247,0.4)]">
-              <Sparkles className="w-3.5 h-3.5 text-purple-300" />
-            </div>
-            <span className="text-purple-200 font-medium">VIP Recliner (NPR 800)</span>
-          </div>
-
-          <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded-t-md bg-slate-900/60 opacity-50 border border-rose-950 flex items-center justify-center text-rose-500">
               <X className="w-3 h-3" />
             </div>
@@ -160,7 +147,6 @@ export const SeatSelectionGrid: React.FC = () => {
                     const isBooked = bookingShowtime.bookedSeatIds.includes(seat.id);
                     const isBlocked = bookingShowtime.blockedSeatIds.includes(seat.id);
                     const isSelected = selectedSeats.includes(seat.id);
-                    const isVip = seat.type === 'vip';
 
                     return (
                       <motion.button
@@ -182,14 +168,12 @@ export const SeatSelectionGrid: React.FC = () => {
                             : {}
                         }
                         whileTap={!isBooked && !isBlocked ? { scale: 0.95 } : {}}
-                        title={`${seat.id} (${seat.type.toUpperCase()}) - NPR ${price}`}
+                        title={`Seat ${seat.id} - NPR ${price}`}
                         className={`relative w-7 h-8 sm:w-8 sm:h-9 rounded-t-lg transition-all flex flex-col items-center justify-center text-[10px] font-extrabold cursor-pointer ${
                           isBooked || isBlocked
                             ? 'bg-slate-950/80 text-slate-700 border border-slate-900 cursor-not-allowed opacity-35'
                             : isSelected
                             ? 'bg-gradient-to-t from-[#D4AF37] to-amber-300 text-black border-2 border-white shadow-[0_0_20px_rgba(212,175,55,1)] z-20'
-                            : isVip
-                            ? 'bg-purple-950/90 hover:bg-purple-800 text-purple-200 border border-purple-500/50 shadow-[0_0_8px_rgba(168,85,247,0.3)]'
                             : 'bg-slate-800/90 hover:bg-[#D4AF37]/30 text-slate-300 hover:text-white border border-slate-700/80'
                         }`}
                       >

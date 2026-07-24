@@ -37,9 +37,6 @@ export const Header: React.FC = () => {
                 <span className="text-lg sm:text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-[#D4AF37] to-amber-400 font-serif">
                   GAJURI
                 </span>
-                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/40 tracking-widest uppercase">
-                  IMAX
-                </span>
               </div>
               <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
                 <MapPin className="w-2.5 h-2.5 text-[#D4AF37]" />
@@ -55,7 +52,7 @@ export const Header: React.FC = () => {
               <input
                 id="header-search-input"
                 type="text"
-                placeholder="Search movies, IMAX showtimes..."
+                placeholder="Search movies, showtimes..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -189,22 +186,15 @@ export const Header: React.FC = () => {
         {/* Right Section: Quick Action Icons & Profile */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           
-          {/* Admin Mode Quick Switch */}
+          {/* User Mode Display Box */}
           <div className="hidden sm:flex items-center gap-1.5 bg-[#12131A] border border-white/10 rounded-full p-1">
             <button
-              id="admin-mode-toggle"
-              onClick={() => {
-                setIsAdmin(!isAdmin);
-                if (!isAdmin) setActiveTab('admin');
-              }}
-              className={`text-[10px] font-bold px-3 py-1 rounded-full transition-all flex items-center gap-1 ${
-                isAdmin
-                  ? 'bg-[#D4AF37] text-black shadow-[0_0_12px_rgba(212,175,55,0.6)]'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              id="user-mode-badge"
+              onClick={() => handleNavigate('account')}
+              className="text-[10px] font-bold px-3 py-1 rounded-full transition-all flex items-center gap-1 bg-[#D4AF37] text-black shadow-[0_0_12px_rgba(212,175,55,0.6)] cursor-pointer"
             >
-              <Sliders className="w-3 h-3" />
-              <span>{isAdmin ? 'ADMIN' : 'USER'}</span>
+              <User className="w-3 h-3" />
+              <span>USER</span>
             </button>
           </div>
 

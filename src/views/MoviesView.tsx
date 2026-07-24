@@ -605,17 +605,17 @@ export const MoviesView: React.FC = () => {
               />
 
               <div className="space-y-3 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#D4AF37] text-black">
-                    {selectedMovieDetail.hallType}
-                  </span>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-amber-300 border border-white/10">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+                  <span className="text-amber-300">
                     {selectedMovieDetail.industry}
                   </span>
                   {selectedMovieDetail.censorRating && (
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-slate-200 border border-white/10">
-                      {selectedMovieDetail.censorRating}
-                    </span>
+                    <>
+                      <span className="text-slate-500">•</span>
+                      <span className="text-slate-200">
+                        {selectedMovieDetail.censorRating}
+                      </span>
+                    </>
                   )}
                 </div>
 

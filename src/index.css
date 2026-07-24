@@ -1,11 +1,130 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 @layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  html.light {
+    background-color: #F8FAFC;
+    color: #0F172A;
+  }
+
+  html.dark {
+    background-color: #090A0E;
+    color: #FFFFFF;
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    transition-property: background-color, color, border-color, fill, stroke;
+    transition-duration: 250ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  /* Apply light theme overrides when .light is active on html root */
+  html.light body {
+    background-color: #F8FAFC;
+    color: #0F172A;
+  }
+
+  html.dark body {
+    background-color: #090A0E;
+    color: #FFFFFF;
+  }
+
+  /* Preserve theme yellow text everywhere in all color schemes */
+  .text-\[\#D4AF37\],
+  .text-\[\#d4af37\] {
+    color: #D4AF37 !important;
+  }
+
+  /* Light mode root & body */
+  html.light,
+  html.light body {
+    background-color: #F8FAFC !important;
+    color: #0F172A !important;
+  }
+
+  /* Preserve theme yellow text everywhere in all color schemes */
+  .text-\[\#D4AF37\],
+  .text-\[\#d4af37\],
+  html.light .text-\[\#D4AF37\],
+  html.light .text-\[\#d4af37\] {
+    color: #D4AF37 !important;
+  }
+
+  /* In light mode: convert dark/black backgrounds to white/slate-50 */
+  html.light .bg-\[\#090A0E\],
+  html.light .bg-\[\#12131C\],
+  html.light .bg-\[\#1A1B28\],
+  html.light .bg-\[\#0F1018\],
+  html.light .bg-black,
+  html.light .bg-slate-900,
+  html.light .bg-slate-950,
+  html.light .bg-slate-900\/60,
+  html.light .bg-slate-900\/80,
+  html.light .bg-slate-950\/80,
+  html.light .bg-black\/80,
+  html.light .bg-black\/90 {
+    background-color: #FFFFFF !important;
+  }
+
+  /* In light mode: convert dark background gradients */
+  html.light .from-\[\#12131C\],
+  html.light .via-\[\#1A1B28\],
+  html.light .to-\[\#12131C\],
+  html.light .from-\[\#090A0E\],
+  html.light .to-\[\#090A0E\],
+  html.light .from-slate-900,
+  html.light .to-slate-900 {
+    --tw-gradient-from: #FFFFFF !important;
+    --tw-gradient-to: #F1F5F9 !important;
+  }
+
+  /* In light mode: convert white/light text to dark/black text */
+  html.light .text-white,
+  html.light .text-slate-100,
+  html.light .text-slate-200 {
+    color: #0F172A !important;
+  }
+
+  html.light .text-slate-300,
+  html.light .text-slate-400 {
+    color: #334155 !important;
+  }
+
+  /* Maintain black/dark text inside gold buttons/badges in light mode */
+  html.light .bg-\[\#D4AF37\],
+  html.light .bg-\[\#D4AF37\] *,
+  html.light button.bg-\[\#D4AF37\] {
+    color: #000000 !important;
+  }
+
+  html.light .text-\[\#D4AF37\],
+  html.light .text-\[\#d4af37\] {
+    color: #D4AF37 !important;
+  }
+
+  /* In light mode: borders */
+  html.light .border-white\/10,
+  html.light .border-white\/20,
+  html.light .border-white\/30,
+  html.light .border-white\/5 {
+    border-color: #E2E8F0 !important;
+  }
+
   h1, h2, h3, .font-cinzel {
     font-family: 'Cinzel', serif;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body, *, ::before, ::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }
 
@@ -40,11 +159,20 @@
   background: #090A0E;
 }
 
+html.light ::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #2A2B3D;
   border-radius: 4px;
 }
 
+html.light ::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #D4AF37;
 }
+
