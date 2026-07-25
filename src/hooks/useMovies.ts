@@ -115,7 +115,9 @@ export function useMovies() {
 
     // Create Movie directly into public.movies
   const createMovie = async (movieData: Partial<MovieRecord>): Promise<{ success: boolean; movie?: MovieRecord; error?: string }> => {
+    const id = movieData.id || `movie-${Date.now()}`;
     const dbRecord = {
+      id,
       title: movieData.title || 'Untitled Movie',
       subtitle: movieData.subtitle || '',
       nepali_title: movieData.nepaliTitle || '',

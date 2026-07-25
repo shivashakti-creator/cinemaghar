@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Movie, Showtime } from '../types';
+import { Movie, Showtime, Booking, StaffAccount, ScanLog } from '../types';
 
 const env = (import.meta as unknown as { env?: Record<string, string> }).env || {};
 const rawUrl = (env.VITE_SUPABASE_URL || '').trim();
@@ -54,35 +54,41 @@ export interface SupabaseBookingRecord {
   manual_checkin_reason?: string;
 }
 
-export async function saveBookingToSupabase(booking: SupabaseBookingRecord) {
+export async function saveBookingToSupabase(booking: any) {
   try {
+    const isAppBooking = 'movieId' in booking;
     const record = {
       id: booking.id || booking.booking_code,
-      booking_code: booking.booking_code,
-      movie_id: booking.movie_id,
-      movie_title: booking.movie_title,
-      movie_poster: booking.movie_poster || '',
-      customer_name: booking.customer_name,
-      customer_phone: booking.customer_phone,
-      customer_email: booking.customer_email || '',
-      show_date: booking.show_date || '',
-      show_time: booking.show_time,
-      hall_name: booking.hall_name,
-      format: booking.format || '2D',
-      selected_seats: booking.selected_seats,
-      food_items: booking.food_items || [],
-      ticket_total: booking.ticket_total || 0,
-      snack_total: booking.snack_total || 0,
-      total_price: booking.total_price,
-      payment_method: booking.payment_method,
-      payment_status: booking.payment_status || 'CONFIRMED',
-      qr_token: booking.qr_token || booking.booking_code
+      booking_code: isAppBooking ? booking.id : booking.booking_code,
+      movie_id: isAppBooking ? booking.movieId : booking.movie_id,
+      movie_title: isAppBooking ? booking.movieTitle : booking.movie_title,
+      movie_poster: isAppBooking ? booking.moviePoster || '' : booking.movie_poster || '',
+      customer_name: isAppBooking ? booking.customerName : booking.customer_name,
+      customer_phone: isAppBooking ? booking.customerPhone : booking.customer_phone,
+      customer_email: isAppBooking ? booking.customerEmail || '' : booking.customer_email || '',
+      show_date: isAppBooking ? booking.date : booking.show_date || '',
+      show_time: isAppBooking ? booking.time : booking.show_time,
+      hall_name: isAppBooking ? booking.hallName : booking.hall_name,
+      format: isAppBooking ? booking.format : booking.format || '2D',
+      selected_seats: isAppBooking ? booking.seatIds : booking.selected_seats,
+      food_items: isAppBooking ? booking.snacks : booking.food_items || [],
+      ticket_total: isAppBooking ? booking.ticketTotal : booking.ticket_total || 0,
+      snack_total: isAppBooking ? booking.snackTotal : booking.snack_total || 0,
+      total_price: isAppBooking ? booking.grandTotal : booking.total_price,
+      payment_method: isAppBooking ? booking.paymentMethod : booking.payment_method,
+      payment_status: isAppBooking ? (booking.status === 'USED' || booking.status === 'CHECKED_IN' ? 'USED' : 'CONFIRMED') : (booking.payment_status || 'CONFIRMED'),
+      qr_token: isAppBooking ? (booking.qrCodeData || booking.id) : (booking.qr_token || booking.booking_code),
+      scanned_by: isAppBooking ? (booking.scannedBy || '') : (booking.scanned_by || ''),
+      scanned_by_name: isAppBooking ? (booking.scannedByName || '') : (booking.scanned_by_name || ''),
+      scanned_at: isAppBooking ? (booking.scannedAt || null) : (booking.scanned_at || null),
+      manual_checkin_reason: isAppBooking ? (booking.manualCheckinReason || '') : (booking.manual_checkin_reason || ''),
+      created_at: isAppBooking ? (booking.createdAt || new Date().toISOString()) : (booking.created_at || new Date().toISOString())
     };
 
     console.log('[Supabase saveBookingToSupabase Request]:', record);
     const { data, error } = await supabase
       .from('bookings')
-      .upsert([record])
+      .upsert([record], { onConflict: 'booking_code' })
       .select();
 
     if (error) {
@@ -341,6 +347,7 @@ export async function deleteBookingFromSupabase(id: string) {
 export async function saveMovieToSupabase(movie: Movie) {
   try {
     const record = {
+      id: movie.id,
       title: movie.title,
       subtitle: movie.subtitle || '',
       nepali_title: movie.nepaliTitle || '',
@@ -383,6 +390,119 @@ export async function saveMovieToSupabase(movie: Movie) {
     return { success: !error, data, error };
   } catch (err) {
     console.error('[Supabase saveMovieToSupabase Exception]:', err);
+    return { success: false, error: err };
+  }
+}
+
+// Fetch Staff Members from Supabase
+export async function fetchStaffFromSupabase(): Promise<StaffAccount[] | null> {
+  try {
+    const { data, error } = await supabase.from('staff_members').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.warn('[Supabase fetchStaffFromSupabase Error]:', error.message);
+      return null;
+    }
+    if (!data) return [];
+    return data.map((item: any) => ({
+      id: item.id,
+      staffId: item.staff_id,
+      fullName: item.full_name,
+      email: item.email,
+      phone: item.phone,
+      branch: item.branch || 'Gajuri Main Branch',
+      assignedHall: item.assigned_hall || 'All Screens',
+      role: item.role || 'Gate Scanner',
+      isActive: item.is_active ?? true,
+      createdAt: item.created_at || new Date().toISOString(),
+      password: item.password_hash || 'staff123'
+    }));
+  } catch (err) {
+    console.error('[Supabase fetchStaffFromSupabase Exception]:', err);
+    return null;
+  }
+}
+
+// Save Staff Member to Supabase
+export async function saveStaffToSupabase(staff: StaffAccount) {
+  try {
+    const record = {
+      id: staff.id,
+      staff_id: staff.staffId,
+      full_name: staff.fullName,
+      email: staff.email,
+      phone: staff.phone,
+      password_hash: staff.password || 'staff123',
+      branch: staff.branch,
+      assigned_hall: staff.assignedHall,
+      role: staff.role,
+      is_active: staff.isActive
+    };
+    const { data, error } = await supabase.from('staff_members').upsert([record], { onConflict: 'id' }).select();
+    if (error) console.error('[Supabase saveStaffToSupabase Error]:', error);
+    return { success: !error, data, error };
+  } catch (err) {
+    console.error('[Supabase saveStaffToSupabase Exception]:', err);
+    return { success: false, error: err };
+  }
+}
+
+// Delete Staff Member from Supabase
+export async function deleteStaffFromSupabase(id: string) {
+  try {
+    const { error } = await supabase.from('staff_members').delete().eq('id', id);
+    return { success: !error, error };
+  } catch (err) {
+    return { success: false, error: err };
+  }
+}
+
+// Fetch Scan Logs from Supabase
+export async function fetchScanLogsFromSupabase(): Promise<ScanLog[] | null> {
+  try {
+    const { data, error } = await supabase.from('scan_logs').select('*').order('scanned_at', { ascending: false });
+    if (error) {
+      console.warn('[Supabase fetchScanLogsFromSupabase Error]:', error.message);
+      return null;
+    }
+    if (!data) return [];
+    return data.map((item: any) => ({
+      id: item.id,
+      bookingId: item.booking_id,
+      staffId: item.staff_id,
+      staffName: item.staff_name,
+      scanMethod: item.scan_method,
+      scanResult: item.scan_result,
+      manualReason: item.manual_reason,
+      scannedAt: item.scanned_at,
+      deviceInfo: item.device_info,
+      branch: item.branch
+    }));
+  } catch (err) {
+    console.error('[Supabase fetchScanLogsFromSupabase Exception]:', err);
+    return null;
+  }
+}
+
+// Save Scan Log to Supabase
+export async function saveScanLogToSupabase(log: ScanLog) {
+  try {
+    const record = {
+      id: log.id || crypto.randomUUID(),
+      booking_id: log.bookingId,
+      staff_id: log.staffId,
+      staff_name: log.staffName,
+      scan_method: log.scanMethod,
+      scan_result: log.scanResult,
+      manual_reason: log.manualReason || '',
+      device_info: log.deviceInfo || '',
+      branch: log.branch || 'Gajuri Main Branch',
+      scanned_at: log.scannedAt || new Date().toISOString()
+    };
+    const { data, error } = await supabase.from('scan_logs').upsert([record], { onConflict: 'id' }).select();
+    if (error) console.error('[Supabase saveScanLogToSupabase Error]:', error);
+    return { success: !error, data, error };
+  } catch (err) {
+    console.error('[Supabase saveScanLogToSupabase Exception]:', err);
     return { success: false, error: err };
   }
 }

@@ -128,13 +128,14 @@ export class PaymentManager {
 
     // Save to Supabase
     try {
-      await supabase.from('bookings').insert([{
+      await supabase.from('bookings').upsert([{
+        id: bookingRef,
         booking_code: bookingRef,
         movie_id: req.movieId,
         movie_title: req.movieTitle,
         customer_name: req.customerName,
         customer_phone: req.customerPhone,
-        customer_email: req.customerEmail,
+        customer_email: req.customerEmail || '',
         show_date: req.showDate,
         show_time: req.showTime,
         hall_name: req.hallName,
@@ -147,8 +148,9 @@ export class PaymentManager {
         payment_method: req.paymentMethod,
         payment_status: 'PENDING',
         booking_status: 'payment_pending',
+        qr_token: qrToken,
         expires_at: expiresAt
-      }]);
+      }], { onConflict: 'booking_code' });
     } catch (e) {
       console.warn('Supabase pending booking save info:', e);
     }
@@ -270,11 +272,29 @@ export class PaymentManager {
 
       // Update Supabase
       try {
-        await supabase.from('bookings').update({
+        await supabase.from('bookings').upsert([{
+          id: req.bookingReference,
+          booking_code: req.bookingReference,
+          movie_id: booking.movie_id,
+          movie_title: booking.movie_title,
+          customer_name: booking.customer_name,
+          customer_phone: booking.customer_phone,
+          customer_email: booking.customer_email || '',
+          show_date: booking.show_date,
+          show_time: booking.show_time,
+          hall_name: booking.hall_name,
+          format: booking.format,
+          selected_seats: booking.seat_numbers,
+          food_items: booking.food_items,
+          ticket_total: booking.ticket_total,
+          snack_total: booking.snack_total,
+          total_price: booking.amount,
+          payment_method: booking.payment_method,
           payment_status: 'CONFIRMED',
           booking_status: 'confirmed',
+          qr_token: booking.qr_token || req.bookingReference,
           transaction_id: verificationResult.transactionId
-        }).eq('booking_code', req.bookingReference);
+        }], { onConflict: 'booking_code' });
       } catch (e) {
         console.warn('Supabase update status error:', e);
       }

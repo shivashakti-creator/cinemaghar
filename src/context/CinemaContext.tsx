@@ -30,7 +30,11 @@ import {
   deleteShowtimeFromSupabase,
   fetchBookingsFromSupabase,
   deleteBookingFromSupabase,
-  updateBookingStatusInSupabase,
+  fetchStaffFromSupabase,
+  saveStaffToSupabase,
+  deleteStaffFromSupabase,
+  fetchScanLogsFromSupabase,
+  saveScanLogToSupabase,
   supabase
 } from '../lib/supabase';
 
@@ -252,7 +256,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Fetch initial movies, showtimes, and bookings from Supabase on mount
+  // Fetch initial movies, showtimes, bookings, staff accounts, and scan logs from Supabase on mount
   useEffect(() => {
     const refreshMovies = () => {
       fetchMoviesFromSupabase().then((data) => {
@@ -265,13 +269,26 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     refreshMovies();
 
     fetchShowtimesFromSupabase().then((data) => {
-      if (data !== null && data.length > 0) {
+      if (data !== null) {
         setShowtimes(data);
       }
     });
+
     fetchBookingsFromSupabase().then((data) => {
-      if (data !== null && data.length > 0) {
+      if (data !== null) {
         setBookings(data);
+      }
+    });
+
+    fetchStaffFromSupabase().then((data) => {
+      if (data !== null && data.length > 0) {
+        setStaffAccounts(data);
+      }
+    });
+
+    fetchScanLogsFromSupabase().then((data) => {
+      if (data !== null && data.length > 0) {
+        setScanLogs(data);
       }
     });
 
@@ -335,24 +352,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     setStaffAccounts((prev) => [newStaff, ...prev]);
-
-    // Upsert into staff_members table in Supabase
-    try {
-      await supabase.from('staff_members').insert([{
-        id: newStaff.id,
-        staff_id: newStaff.staffId,
-        full_name: newStaff.fullName,
-        email: newStaff.email,
-        phone: newStaff.phone,
-        password_hash: newStaff.password || 'staff123',
-        branch: newStaff.branch,
-        assigned_hall: newStaff.assignedHall,
-        role: newStaff.role,
-        is_active: newStaff.isActive
-      }]);
-    } catch (err) {
-      console.warn('Supabase staff insert warning:', err);
-    }
+    saveStaffToSupabase(newStaff);
 
     showToast(`Staff Account created for ${newStaff.fullName} (${newStaff.staffId})`, 'success');
     return newStaff;
@@ -363,43 +363,35 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       prev.map((s) => (s.id === id ? { ...s, ...updated } : s))
     );
 
-    // Sync with Supabase
-    try {
-      const target = staffAccounts.find((s) => s.id === id);
-      if (target) {
-        const merged = { ...target, ...updated };
-        await supabase.from('staff_members').upsert([{
-          id: merged.id,
-          staff_id: merged.staffId,
-          full_name: merged.fullName,
-          email: merged.email,
-          phone: merged.phone,
-          password_hash: merged.password || 'staff123',
-          branch: merged.branch,
-          assigned_hall: merged.assignedHall,
-          role: merged.role,
-          is_active: merged.isActive
-        }], { onConflict: 'id' });
-      }
-    } catch (err) {
-      console.warn('Supabase staff update warning:', err);
+    const target = staffAccounts.find((s) => s.id === id);
+    if (target) {
+      const merged = { ...target, ...updated };
+      saveStaffToSupabase(merged);
     }
 
     showToast(`Staff profile updated`, 'info');
   };
 
   const toggleStaffActive = async (id: string) => {
+    let updatedStaff: StaffAccount | undefined;
     setStaffAccounts((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, isActive: !s.isActive } : s))
+      prev.map((s) => {
+        if (s.id === id) {
+          updatedStaff = { ...s, isActive: !s.isActive };
+          return updatedStaff;
+        }
+        return s;
+      })
     );
+    if (updatedStaff) {
+      saveStaffToSupabase(updatedStaff);
+    }
     showToast(`Staff account status updated`, 'info');
   };
 
   const deleteStaffAccount = async (id: string) => {
     setStaffAccounts((prev) => prev.filter((s) => s.id !== id));
-    try {
-      await supabase.from('staff_members').delete().eq('id', id);
-    } catch (e) {}
+    deleteStaffFromSupabase(id);
     showToast(`Staff account removed`, 'warning');
   };
 
@@ -438,6 +430,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         branch
       };
       setScanLogs((prev) => [logEntry, ...prev]);
+      saveScanLogToSupabase(logEntry);
       return {
         result: 'invalid' as const,
         message: 'BOOKING NOT FOUND - QR Code is invalid or not in system',
@@ -459,6 +452,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         branch
       };
       setScanLogs((prev) => [logEntry, ...prev]);
+      saveScanLogToSupabase(logEntry);
       setLastScannedTicket(found);
       return {
         result: 'already_used' as const,
@@ -500,6 +494,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     setBookings((prev) => prev.map((b) => (b.id === bookingId ? updatedBooking : b)));
+    saveBookingToSupabase(updatedBooking);
 
     const newLog: ScanLog = {
       id: `log-${Date.now()}`,
@@ -514,6 +509,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     setScanLogs((prev) => [newLog, ...prev]);
+    saveScanLogToSupabase(newLog);
     setLastScannedTicket(updatedBooking);
     showToast(`Admitted customer ${found.customerName}! Seats: ${found.seatIds.join(', ')}`, 'success');
 
@@ -747,11 +743,12 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   // Admin Actions (Complete Movie CRUD + Removal Options)
-   (movieData: Omit<Movie, 'id'>): Promise<Movie> => {
-    const newMovie: Movie = { ...movieData, createdAt: new Date().toISOString() };
+  const addMovie = async (movieData: Omit<Movie, 'id'>): Promise<Movie> => {
+    const newId = `m-${Date.now()}`;
+    const newMovie: Movie = { ...movieData, id: newId, createdAt: new Date().toISOString() };
     const res = await saveMovieToSupabase(newMovie);
     if (!res.success) {
-      showToast(`Failed toconst addMovie = async save movie to database: ${res.error?.message || 'Unknown error'}`, 'error');
+      showToast(`Failed to save movie to database: ${res.error?.message || 'Unknown error'}`, 'error');
       throw new Error(res.error?.message || 'Failed to save movie to Supabase');
     }
     
