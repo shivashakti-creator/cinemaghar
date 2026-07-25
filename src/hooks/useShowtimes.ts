@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, ensureUUID } from '../lib/supabase';
 import { ShowtimeRecord } from '../types/admin';
 import { INITIAL_SHOWTIMES } from '../data/mockData';
 
@@ -97,10 +97,10 @@ export function useShowtimes() {
 
   // Create Showtime with automatic seat inventory creation
   const createShowtime = async (data: Partial<ShowtimeRecord>) => {
-    const id = data.id || `st-${Date.now()}`;
+    const id = ensureUUID(data.id);
     const newRecord: ShowtimeRecord = {
       id,
-      movie_id: data.movie_id || '',
+      movie_id: ensureUUID(data.movie_id),
       hall: data.hall || 'Hall 1 - IMAX 3D',
       hall_id: data.hall_id || 'hall-1',
       screen_name: data.screen_name || 'Screen 1',

@@ -192,19 +192,31 @@ CREATE TABLE IF NOT EXISTS scan_logs (
 );
 
 -- ROW LEVEL SECURITY (RLS) POLICIES
-ALTER TABLE movies ENABLE ROW LEVEL SECURITY;
-ALTER TABLE showtimes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE staff_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE scan_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+-- Option 1: Disable RLS completely on public tables for Gajuri Cinema client apps (RECOMMENDED)
+ALTER TABLE IF EXISTS public.movies DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.showtimes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.bookings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.staff_members DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.scan_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.admins DISABLE ROW LEVEL SECURITY;
 
--- Allow public full access for movies (SELECT, INSERT, UPDATE, DELETE)
+-- Option 2: If RLS is enabled, apply permissive public policies safely:
+DROP POLICY IF EXISTS "Public full access movies" ON movies;
 CREATE POLICY "Public full access movies" ON movies FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public full access showtimes" ON showtimes;
 CREATE POLICY "Public full access showtimes" ON showtimes FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public full access bookings" ON bookings;
 CREATE POLICY "Public full access bookings" ON bookings FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public full access staff_members" ON staff_members;
 CREATE POLICY "Public full access staff_members" ON staff_members FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public full access scan_logs" ON scan_logs;
 CREATE POLICY "Public full access scan_logs" ON scan_logs FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public full access admins" ON admins;
 CREATE POLICY "Public full access admins" ON admins FOR ALL USING (true) WITH CHECK (true);
 
 

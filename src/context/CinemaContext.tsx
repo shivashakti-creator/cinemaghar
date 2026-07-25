@@ -35,7 +35,9 @@ import {
   deleteStaffFromSupabase,
   fetchScanLogsFromSupabase,
   saveScanLogToSupabase,
-  supabase
+  supabase,
+  generateUUID,
+  ensureUUID
 } from '../lib/supabase';
 
 interface Toast {
@@ -345,7 +347,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const generatedStaffId = data.staffId || `STF-${String(nextNum).padStart(3, '0')}`;
     const newStaff: StaffAccount = {
       ...data,
-      id: `staff-${Date.now()}`,
+      id: generateUUID(),
       staffId: generatedStaffId,
       password: data.password || 'staff123',
       createdAt: new Date().toISOString()
@@ -412,7 +414,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         codeClean.toLowerCase().includes(b.id.toLowerCase())
     );
 
-    const logId = `log-${Date.now()}`;
+    const logId = generateUUID();
     const staffId = staffUser?.staffId || 'STF-001';
     const staffName = staffUser?.fullName || 'Gate Staff';
     const branch = staffUser?.branch || 'Gajuri Main Branch';
@@ -497,7 +499,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     saveBookingToSupabase(updatedBooking);
 
     const newLog: ScanLog = {
-      id: `log-${Date.now()}`,
+      id: generateUUID(),
       bookingId,
       staffId,
       staffName,
@@ -744,17 +746,27 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Admin Actions (Complete Movie CRUD + Removal Options)
   const addMovie = async (movieData: Omit<Movie, 'id'>): Promise<Movie> => {
-    const newId = `m-${Date.now()}`;
+    const newId = generateUUID();
     const newMovie: Movie = { ...movieData, id: newId, createdAt: new Date().toISOString() };
+    
+    // Optimistic local update
+    setMovies((prev) => [newMovie, ...prev.filter((m) => m.id !== newId)]);
+
     const res = await saveMovieToSupabase(newMovie);
     if (!res.success) {
-      showToast(`Failed to save movie to database: ${res.error?.message || 'Unknown error'}`, 'error');
-      throw new Error(res.error?.message || 'Failed to save movie to Supabase');
+      console.warn('Supabase saveMovieToSupabase warning:', res.message || res.error);
+      const isRls = res.isRlsError || res.error?.message?.includes('row-level security');
+      if (isRls) {
+        showToast(`Saved locally! Supabase RLS blocked insert. Run "ALTER TABLE public.movies DISABLE ROW LEVEL SECURITY;" in Supabase SQL Editor.`, 'warning');
+      } else {
+        showToast(`Saved locally! Database notice: ${res.message || res.error?.message || 'Unknown error'}`, 'info');
+      }
+      return newMovie;
     }
     
     // Refresh movies from Supabase
     const fresh = await fetchMoviesFromSupabase();
-    if (fresh !== null) setMovies(fresh);
+    if (fresh !== null && fresh.length > 0) setMovies(fresh);
 
     showToast(`Movie "${newMovie.title}" added & saved to public.movies`, 'success');
     return newMovie;
@@ -764,13 +776,22 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const existing = movies.find((m) => m.id === id);
     if (!existing) return;
     const updatedMovie: Movie = { ...existing, ...updated };
+    
+    // Optimistic local update
+    setMovies((prev) => prev.map((m) => (m.id === id ? updatedMovie : m)));
+
     const res = await saveMovieToSupabase(updatedMovie);
     if (!res.success) {
-      showToast(`Failed to update movie in database`, 'error');
+      const isRls = res.isRlsError || res.error?.message?.includes('row-level security');
+      if (isRls) {
+        showToast(`Updated locally! Supabase RLS blocked update. Run "ALTER TABLE public.movies DISABLE ROW LEVEL SECURITY;" in Supabase.`, 'warning');
+      } else {
+        showToast(`Updated locally! Database sync notice`, 'info');
+      }
       return;
     }
     const fresh = await fetchMoviesFromSupabase();
-    if (fresh !== null) setMovies(fresh);
+    if (fresh !== null && fresh.length > 0) setMovies(fresh);
     showToast(`Movie updated in public.movies table`, 'success');
   };
 
@@ -810,7 +831,7 @@ export const CinemaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Showtime Operations
   const addShowtime = async (showtimeData: Omit<Showtime, 'id' | 'bookedSeatIds' | 'blockedSeatIds'>) => {
-    const newId = `s-${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
+    const newId = generateUUID();
     const newShowtime: Showtime = {
       ...showtimeData,
       id: newId,

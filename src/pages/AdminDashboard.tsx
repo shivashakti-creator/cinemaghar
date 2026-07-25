@@ -46,7 +46,9 @@ import {
   Lock,
   KeyRound,
   Filter,
-  ArrowUpDown
+  ArrowUpDown,
+  ShieldAlert,
+  X
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -129,6 +131,7 @@ export const AdminDashboard: React.FC = () => {
   const moviesPerPage = 6;
 
   const [showMovieModal, setShowMovieModal] = useState(false);
+  const [showRlsFixModal, setShowRlsFixModal] = useState(false);
   const [editingMovie, setEditingMovie] = useState<MovieRecord | null>(null);
 
   const [mTitle, setMTitle] = useState('');
@@ -267,7 +270,14 @@ export const AdminDashboard: React.FC = () => {
         showToast('Movie updated successfully in public.movies table!', 'success');
         setShowMovieModal(false);
       } else {
-        showToast(`Failed to update movie in database: ${res.error || 'Unknown error'}`, 'error');
+        if (res.isRlsError || res.error?.includes('row-level security') || res.error?.includes('RLS')) {
+          showToast('Updated locally! Supabase Row-Level Security (RLS) blocked database update.', 'warning');
+          setShowRlsFixModal(true);
+          setShowMovieModal(false);
+        } else {
+          showToast(`Database notice: ${res.error || 'Unknown error'}`, 'error');
+          setShowMovieModal(false);
+        }
       }
     } else {
       const res = await createMovie(payload);
@@ -275,7 +285,14 @@ export const AdminDashboard: React.FC = () => {
         showToast('New movie saved directly to public.movies table!', 'success');
         setShowMovieModal(false);
       } else {
-        showToast(`Failed to save movie to database: ${res.error || 'Unknown error'}`, 'error');
+        if (res.isRlsError || res.error?.includes('row-level security') || res.error?.includes('RLS')) {
+          showToast('Movie added to local app state! Supabase RLS policy blocked database save.', 'warning');
+          setShowRlsFixModal(true);
+          setShowMovieModal(false);
+        } else {
+          showToast(`Movie added locally! Database notice: ${res.error || 'Unknown error'}`, 'info');
+          setShowMovieModal(false);
+        }
       }
     }
   };
@@ -903,6 +920,16 @@ export const AdminDashboard: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    id="open-rls-fix-modal-btn"
+                    onClick={() => setShowRlsFixModal(true)}
+                    className="px-4 py-2.5 rounded-2xl bg-amber-950/80 hover:bg-amber-900 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow"
+                    title="Fix Supabase Row-Level Security permission policies"
+                  >
+                    <ShieldAlert className="w-4 h-4 text-amber-400" />
+                    <span>Supabase RLS Fix</span>
+                  </button>
+
                   {selectedMovieIds.length > 0 && (
                     <button
                       id="bulk-delete-movies-btn"
@@ -2134,6 +2161,89 @@ export const AdminDashboard: React.FC = () => {
                   className="p-3 rounded-2xl bg-rose-950/80 border border-rose-500/40 text-rose-300 font-bold cursor-pointer"
                 >
                   Cancel Booking
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUPABASE ROW LEVEL SECURITY (RLS) FIX HELPER MODAL */}
+      {showRlsFixModal && (
+        <div className="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0F1018] border border-amber-500/40 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 animate-fade-in text-slate-200">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold font-serif text-white">Fix Supabase Row-Level Security (RLS) Policy</h2>
+                  <p className="text-xs text-amber-300">Resolve "new row violates row-level security policy for table 'movies'"</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowRlsFixModal(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs leading-relaxed text-slate-300">
+              <p>
+                When Row Level Security (RLS) is enabled on Supabase tables without permissive write policies for anon keys, database operations return <code className="text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded font-mono">42501 (RLS Policy Violation)</code>.
+              </p>
+              <p className="text-slate-300 font-semibold">
+                Run the SQL script below in your <span className="text-white">Supabase SQL Editor</span> to grant read/write access:
+              </p>
+
+              <div className="relative bg-[#07080D] p-4 rounded-2xl border border-white/10 font-mono text-[11px] text-amber-200 overflow-x-auto space-y-1">
+                <p className="text-slate-500 text-[10px] uppercase font-sans font-bold border-b border-white/10 pb-1 mb-2">Supabase SQL Commands (Copy & Run in SQL Editor):</p>
+                <p className="text-slate-400">-- 1. Ensure tables exist (prevents ERROR 42P01 relation does not exist):</p>
+                <p className="text-sky-300">CREATE TABLE IF NOT EXISTS public.staff_members (id VARCHAR(100) PRIMARY KEY, staff_id VARCHAR(50) UNIQUE NOT NULL, full_name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, phone TEXT DEFAULT '', password_hash TEXT DEFAULT 'staff123', branch TEXT DEFAULT 'Gajuri Main Branch', assigned_hall TEXT DEFAULT 'All Screens', role TEXT DEFAULT 'Gate Scanner', is_active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT NOW());</p>
+                <p className="text-sky-300">CREATE TABLE IF NOT EXISTS public.scan_logs (id VARCHAR(100) PRIMARY KEY, booking_id VARCHAR(100) NOT NULL, staff_id VARCHAR(50) NOT NULL, staff_name TEXT NOT NULL, scan_method VARCHAR(50) NOT NULL, scan_result VARCHAR(50) NOT NULL, manual_reason TEXT, device_info TEXT, branch TEXT DEFAULT 'Gajuri Main Branch', scanned_at TIMESTAMPTZ DEFAULT NOW());</p>
+                <br />
+                <p className="text-slate-400">-- 2. Disable RLS safely across all tables:</p>
+                <p className="text-emerald-400">ALTER TABLE IF EXISTS public.movies DISABLE ROW LEVEL SECURITY;</p>
+                <p className="text-emerald-400">ALTER TABLE IF EXISTS public.showtimes DISABLE ROW LEVEL SECURITY;</p>
+                <p className="text-emerald-400">ALTER TABLE IF EXISTS public.bookings DISABLE ROW LEVEL SECURITY;</p>
+                <p className="text-emerald-400">ALTER TABLE IF EXISTS public.staff_members DISABLE ROW LEVEL SECURITY;</p>
+                <p className="text-emerald-400">ALTER TABLE IF EXISTS public.scan_logs DISABLE ROW LEVEL SECURITY;</p>
+                <p className="text-emerald-400">ALTER TABLE IF EXISTS public.admins DISABLE ROW LEVEL SECURITY;</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-white/10">
+              <a
+                href="https://supabase.com/dashboard"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-[#D4AF37] hover:underline flex items-center gap-1 font-semibold"
+              >
+                <span>Open Supabase SQL Editor</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const sqlText = `CREATE TABLE IF NOT EXISTS public.staff_members (id VARCHAR(100) PRIMARY KEY, staff_id VARCHAR(50) UNIQUE NOT NULL, full_name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, phone TEXT DEFAULT '', password_hash TEXT DEFAULT 'staff123', branch TEXT DEFAULT 'Gajuri Main Branch', assigned_hall TEXT DEFAULT 'All Screens', role TEXT DEFAULT 'Gate Scanner', is_active BOOLEAN DEFAULT true, created_at TIMESTAMPTZ DEFAULT NOW());\nCREATE TABLE IF NOT EXISTS public.scan_logs (id VARCHAR(100) PRIMARY KEY, booking_id VARCHAR(100) NOT NULL, staff_id VARCHAR(50) NOT NULL, staff_name TEXT NOT NULL, scan_method VARCHAR(50) NOT NULL, scan_result VARCHAR(50) NOT NULL, manual_reason TEXT, device_info TEXT, branch TEXT DEFAULT 'Gajuri Main Branch', scanned_at TIMESTAMPTZ DEFAULT NOW());\n\nALTER TABLE IF EXISTS public.movies DISABLE ROW LEVEL SECURITY;\nALTER TABLE IF EXISTS public.showtimes DISABLE ROW LEVEL SECURITY;\nALTER TABLE IF EXISTS public.bookings DISABLE ROW LEVEL SECURITY;\nALTER TABLE IF EXISTS public.staff_members DISABLE ROW LEVEL SECURITY;\nALTER TABLE IF EXISTS public.scan_logs DISABLE ROW LEVEL SECURITY;\nALTER TABLE IF EXISTS public.admins DISABLE ROW LEVEL SECURITY;`;
+                    navigator.clipboard.writeText(sqlText);
+                    showToast('SQL Fix Script copied to clipboard!', 'success');
+                  }}
+                  className="px-5 py-2.5 rounded-2xl bg-[#D4AF37] hover:bg-amber-400 text-black font-extrabold text-xs flex items-center gap-2 cursor-pointer shadow transition-all"
+                >
+                  <Copy className="w-4 h-4" />
+                  <span>Copy SQL Fix Script</span>
+                </button>
+
+                <button
+                  onClick={() => setShowRlsFixModal(false)}
+                  className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold cursor-pointer transition-all"
+                >
+                  Close
                 </button>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, ensureUUID } from '../lib/supabase';
 import { AdminProfile } from '../types/admin';
 
 export interface AdminAccountItem {
@@ -344,7 +344,7 @@ export function useAdminAuth() {
     const generatedAdminId = data.adminId || `ADM-${String(nextNum).padStart(3, '0')}`;
 
     const newAdmin: AdminAccountItem = {
-      id: `admin-${Date.now()}`,
+      id: ensureUUID(),
       adminId: generatedAdminId,
       email: data.email,
       fullName: data.fullName,

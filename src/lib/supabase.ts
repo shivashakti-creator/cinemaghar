@@ -26,6 +26,29 @@ console.log('[Supabase Init]: Anon Key exists =', Boolean(supabaseAnonKey), `(le
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export function isUUID(str?: string): boolean {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+}
+
+export function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0,
+      v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+export function ensureUUID(id?: string): string {
+  if (id && isUUID(id)) {
+    return id;
+  }
+  return generateUUID();
+}
+
 export interface SupabaseBookingRecord {
   id?: string;
   created_at?: string;
@@ -57,10 +80,15 @@ export interface SupabaseBookingRecord {
 export async function saveBookingToSupabase(booking: any) {
   try {
     const isAppBooking = 'movieId' in booking;
+    const rawId = booking.id || booking.booking_code;
+    const validId = ensureUUID(rawId);
+    const rawMovieId = isAppBooking ? booking.movieId : booking.movie_id;
+    const validMovieId = ensureUUID(rawMovieId);
+
     const record = {
-      id: booking.id || booking.booking_code,
-      booking_code: isAppBooking ? booking.id : booking.booking_code,
-      movie_id: isAppBooking ? booking.movieId : booking.movie_id,
+      id: validId,
+      booking_code: isAppBooking ? booking.id || validId : booking.booking_code || validId,
+      movie_id: validMovieId,
       movie_title: isAppBooking ? booking.movieTitle : booking.movie_title,
       movie_poster: isAppBooking ? booking.moviePoster || '' : booking.movie_poster || '',
       customer_name: isAppBooking ? booking.customerName : booking.customer_name,
@@ -77,7 +105,7 @@ export async function saveBookingToSupabase(booking: any) {
       total_price: isAppBooking ? booking.grandTotal : booking.total_price,
       payment_method: isAppBooking ? booking.paymentMethod : booking.payment_method,
       payment_status: isAppBooking ? (booking.status === 'USED' || booking.status === 'CHECKED_IN' ? 'USED' : 'CONFIRMED') : (booking.payment_status || 'CONFIRMED'),
-      qr_token: isAppBooking ? (booking.qrCodeData || booking.id) : (booking.qr_token || booking.booking_code),
+      qr_token: isAppBooking ? (booking.qrCodeData || validId) : (booking.qr_token || booking.booking_code || validId),
       scanned_by: isAppBooking ? (booking.scannedBy || '') : (booking.scanned_by || ''),
       scanned_by_name: isAppBooking ? (booking.scannedByName || '') : (booking.scanned_by_name || ''),
       scanned_at: isAppBooking ? (booking.scannedAt || null) : (booking.scanned_at || null),
@@ -245,8 +273,8 @@ export async function fetchShowtimesFromSupabase(): Promise<Showtime[] | null> {
 export async function saveShowtimeToSupabase(showtime: Showtime) {
   try {
     const record = {
-      id: showtime.id,
-      movie_id: showtime.movieId,
+      id: ensureUUID(showtime.id),
+      movie_id: ensureUUID(showtime.movieId),
       hall_id: showtime.hallId || 'hall-1',
       hall_name: showtime.hallName || 'Hall 1 - IMAX 3D Laser',
       screen_name: showtime.screenName || 'Screen 1',
@@ -346,8 +374,9 @@ export async function deleteBookingFromSupabase(id: string) {
 // Save Movie to Supabase
 export async function saveMovieToSupabase(movie: Movie) {
   try {
+    const validId = ensureUUID(movie.id);
     const record = {
-      id: movie.id,
+      id: validId,
       title: movie.title,
       subtitle: movie.subtitle || '',
       nepali_title: movie.nepaliTitle || '',
@@ -386,8 +415,13 @@ export async function saveMovieToSupabase(movie: Movie) {
     console.log('[Supabase saveMovieToSupabase Response]:', data);
     if (error) {
       console.error('[Supabase saveMovieToSupabase Error]: Failed to save to public.movies:', error);
+      const isRls = error.message?.toLowerCase().includes('row-level security') || error.code === '42501';
+      const msg = isRls
+        ? `Row Level Security (RLS) policy error: Run 'ALTER TABLE public.movies DISABLE ROW LEVEL SECURITY;' in Supabase SQL Editor.`
+        : error.message;
+      return { success: false, data, error, isRlsError: isRls, message: msg };
     }
-    return { success: !error, data, error };
+    return { success: true, data, error: null };
   } catch (err) {
     console.error('[Supabase saveMovieToSupabase Exception]:', err);
     return { success: false, error: err };
@@ -426,7 +460,7 @@ export async function fetchStaffFromSupabase(): Promise<StaffAccount[] | null> {
 export async function saveStaffToSupabase(staff: StaffAccount) {
   try {
     const record = {
-      id: staff.id,
+      id: ensureUUID(staff.id),
       staff_id: staff.staffId,
       full_name: staff.fullName,
       email: staff.email,
@@ -487,8 +521,8 @@ export async function fetchScanLogsFromSupabase(): Promise<ScanLog[] | null> {
 export async function saveScanLogToSupabase(log: ScanLog) {
   try {
     const record = {
-      id: log.id || crypto.randomUUID(),
-      booking_id: log.bookingId,
+      id: ensureUUID(log.id),
+      booking_id: ensureUUID(log.bookingId),
       staff_id: log.staffId,
       staff_name: log.staffName,
       scan_method: log.scanMethod,

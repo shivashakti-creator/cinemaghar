@@ -2,7 +2,7 @@ import { BookingRecord, PaymentGateway, PaymentInitiateRequest, PaymentInitiateR
 import { esewaService } from './esewaService';
 import { khaltiService } from './khaltiService';
 import { fonepayService } from './fonepayService';
-import { supabase } from '../../lib/supabase';
+import { supabase, ensureUUID } from '../../lib/supabase';
 
 // In-memory seat reservations store for instant local reactivity & server sync
 const activeReservations: Map<string, SeatReservation> = new Map();
@@ -129,9 +129,9 @@ export class PaymentManager {
     // Save to Supabase
     try {
       await supabase.from('bookings').upsert([{
-        id: bookingRef,
+        id: ensureUUID(bookingRef),
         booking_code: bookingRef,
-        movie_id: req.movieId,
+        movie_id: ensureUUID(req.movieId),
         movie_title: req.movieTitle,
         customer_name: req.customerName,
         customer_phone: req.customerPhone,
@@ -273,9 +273,9 @@ export class PaymentManager {
       // Update Supabase
       try {
         await supabase.from('bookings').upsert([{
-          id: req.bookingReference,
+          id: ensureUUID(req.bookingReference),
           booking_code: req.bookingReference,
-          movie_id: booking.movie_id,
+          movie_id: ensureUUID(booking.movie_id),
           movie_title: booking.movie_title,
           customer_name: booking.customer_name,
           customer_phone: booking.customer_phone,

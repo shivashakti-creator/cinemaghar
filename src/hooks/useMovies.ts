@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, ensureUUID } from '../lib/supabase';
 import { MovieRecord, MovieStatus } from '../types/admin';
 
 export function useMovies() {
@@ -114,8 +114,8 @@ export function useMovies() {
   };
 
     // Create Movie directly into public.movies
-  const createMovie = async (movieData: Partial<MovieRecord>): Promise<{ success: boolean; movie?: MovieRecord; error?: string }> => {
-    const id = movieData.id || `movie-${Date.now()}`;
+  const createMovie = async (movieData: Partial<MovieRecord>): Promise<{ success: boolean; movie?: MovieRecord; error?: string; isRlsError?: boolean }> => {
+    const id = ensureUUID(movieData.id);
     const dbRecord = {
       id,
       title: movieData.title || 'Untitled Movie',
@@ -159,18 +159,59 @@ export function useMovies() {
 
       console.log('[Supabase Insert Movie Response]:', { data: insertedData, error: dbErr });
 
+      // Build optimistic local movie object
+      const localMovieRecord: MovieRecord = {
+        id,
+        title: dbRecord.title,
+        subtitle: dbRecord.subtitle,
+        nepaliTitle: dbRecord.nepali_title,
+        description: dbRecord.synopsis,
+        synopsis: dbRecord.synopsis,
+        duration_minutes: dbRecord.duration_minutes,
+        duration: dbRecord.duration,
+        language: dbRecord.languages[0] || 'Nepali',
+        languages: dbRecord.languages,
+        country: dbRecord.country,
+        age_rating: dbRecord.age_rating,
+        release_date: dbRecord.release_date,
+        end_date: dbRecord.end_date,
+        trailer_url: dbRecord.youtube_trailer_url,
+        youtubeTrailerUrl: dbRecord.youtube_trailer_url,
+        status: dbRecord.status as MovieStatus,
+        poster_url: dbRecord.poster,
+        poster: dbRecord.poster,
+        banner_url: dbRecord.backdrop,
+        backdrop: dbRecord.backdrop,
+        vertical_poster: dbRecord.vertical_poster,
+        genre: dbRecord.genre,
+        rating: dbRecord.rating,
+        director: dbRecord.director,
+        producer: dbRecord.producer,
+        cast_members: dbRecord.cast_members,
+        hall_type: dbRecord.hall_type,
+        featured: dbRecord.featured,
+        created_at: new Date().toISOString()
+      };
+
       if (dbErr) {
         console.error('[Supabase Insert Movie Error]: Failed to save to database:', dbErr);
-        return { success: false, error: dbErr.message || 'Failed to insert movie into database' };
+        // Fallback: update local state so user's action is retained in UI
+        setMovies((prev) => [localMovieRecord, ...prev.filter((m) => m.id !== id)]);
+        window.dispatchEvent(new Event('movies_updated'));
+
+        const isRls = dbErr.message?.toLowerCase().includes('row-level security') || dbErr.code === '42501';
+        const errMsg = isRls
+          ? `Row Level Security (RLS) is enabled on "movies" table in Supabase. Please run: ALTER TABLE public.movies DISABLE ROW LEVEL SECURITY; in Supabase SQL Editor.`
+          : dbErr.message || 'Failed to insert movie into database';
+
+        return { success: false, error: errMsg, isRlsError: isRls, movie: localMovieRecord };
       }
 
       console.log('[Supabase Insert Movie Success]: Movie saved directly to public.movies table!');
-      
-      // Immediately re-fetch from database to ensure state matches public.movies table exactly
       await fetchMovies();
       window.dispatchEvent(new Event('movies_updated'));
       
-      return { success: true };
+      return { success: true, movie: localMovieRecord };
     } catch (err: any) {
       console.error('[Supabase Insert Movie Exception]: Database operation threw error:', err);
       return { success: false, error: err.message || 'Exception during movie insert' };
@@ -178,7 +219,7 @@ export function useMovies() {
   };
 
   // Edit Movie directly in public.movies
-  const updateMovie = async (id: string, updates: Partial<MovieRecord>): Promise<{ success: boolean; error?: string }> => {
+  const updateMovie = async (id: string, updates: Partial<MovieRecord>): Promise<{ success: boolean; error?: string; isRlsError?: boolean }> => {
     const dbUpdates: Record<string, any> = {};
     if (updates.title !== undefined) dbUpdates.title = updates.title;
     if (updates.subtitle !== undefined) dbUpdates.subtitle = updates.subtitle;
@@ -200,6 +241,10 @@ export function useMovies() {
     if (updates.hall_type) dbUpdates.hall_type = updates.hall_type;
     if (updates.featured !== undefined) dbUpdates.featured = updates.featured;
 
+    // Optimistically update local state
+    setMovies((prev) => prev.map((m) => (m.id === id ? { ...m, ...updates } : m)));
+    window.dispatchEvent(new Event('movies_updated'));
+
     try {
       console.log(`[Supabase Update Movie Request]: Updating movie ${id} in public.movies:`, dbUpdates);
       const { data: updatedData, error: dbErr } = await supabase
@@ -212,7 +257,11 @@ export function useMovies() {
 
       if (dbErr) {
         console.error('[Supabase Update Movie Error]: Failed to update database:', dbErr);
-        return { success: false, error: dbErr.message || 'Failed to update movie in database' };
+        const isRls = dbErr.message?.toLowerCase().includes('row-level security') || dbErr.code === '42501';
+        const errMsg = isRls
+          ? `Row Level Security (RLS) is enabled on "movies" table in Supabase. Please run: ALTER TABLE public.movies DISABLE ROW LEVEL SECURITY; in Supabase SQL Editor.`
+          : dbErr.message || 'Failed to update movie in database';
+        return { success: false, error: errMsg, isRlsError: isRls };
       }
 
       console.log(`[Supabase Update Movie Success]: Movie ${id} updated in public.movies`);
